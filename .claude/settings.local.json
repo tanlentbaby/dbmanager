@@ -76,7 +76,13 @@
       "mcp__filesystem__edit_file",
       "Bash(git add .)",
       "Bash(git config --global user.name \"Your Name\")",
-      "Bash(git config --global user.email \"your.email@example.com\")"
+      "Bash(git config --global user.email \"your.email@example.com\")",
+      "Bash(git remote set-url origin git@github.com:tanlentbaby/dbmanager.git)",
+      "Bash(git push)",
+      "Bash(git push --set-upstream origin main)",
+      "Bash(ssh-keygen -t ed25519 -C \"tanlentbaby@gmail.com\")",
+      "Bash(ssh-keygen -t ed25519 -C \"tanlentbaby@gmail.com\" -f /Users/cq/.ssh/id_ed25519 -N \"\")",
+      "Bash(ssh -T git@github.com)"
     ]
   }
 }
