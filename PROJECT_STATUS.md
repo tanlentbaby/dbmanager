@@ -1,7 +1,7 @@
 # DBManager 项目状态
 
 **更新日期：** 2026-03-15  
-**版本：** v0.2.0 (TypeScript 重构中)
+**版本：** v0.4.0 (开发中)
 
 ---
 
@@ -30,18 +30,52 @@
 
 ---
 
-## 二期：TypeScript 重构 🚧
+## 二期：TypeScript 重构 ✅
 
 **启动日期：** 2026-03-15  
-**目标版本：** v0.2.0  
+**目标版本：** v0.2.0 → v0.3.0  
 **技术栈：** TypeScript + Ink + React + Node.js  
+**开发模式：** 单人全栈  
+**状态：** 已完成
+
+### 主任务
+
+| 任务 | 状态 |
+|------|------|
+| [DBManager v0.2.0 - TypeScript 重构 (全栈开发)](https://applink.feishu.cn/client/todo/detail?guid=c39000ad-b29b-4be7-962f-c1fa3655f485&suite_entity_num=t100044) | ✅ 已完成 |
+
+---
+
+## 三期：v0.4.0 开发 🚧
+
+**启动日期：** 2026-03-15  
+**目标版本：** v0.4.0  
+**预计完成：** 2026-04-09  
+**技术栈：** TypeScript + Ink + React + Web UI  
 **开发模式：** 单人全栈
 
 ### 主任务
 
 | 任务 | 状态 |
 |------|------|
-| [DBManager v0.2.0 - TypeScript 重构 (全栈开发)](https://applink.feishu.cn/client/todo/detail?guid=c39000ad-b29b-4be7-962f-c1fa3655f485&suite_entity_num=t100044) | 🔄 进行中 |
+| [DBManager v0.4.0 - Web UI 增强 + 性能优化 + 可视化](https://applink.feishu.cn/client/todo/task_list?guid=a35702d9-df5f-488d-9235-09c45cc56760) | 🔄 进行中 |
+
+### Phase 规划
+
+| Phase | 内容 | 状态 | 预计完成 |
+|-------|------|------|----------|
+| Phase 1 | Web UI 增强 | 📋 待开始 | 2026-03-21 |
+| Phase 2 | 性能优化 | 📋 待开始 | 2026-03-26 |
+| Phase 3 | 可视化增强 | 📋 待开始 | 2026-04-01 |
+| Phase 4 | 插件生态 | 📋 待开始 | 2026-04-06 |
+| Phase 5 | 其他改进 | 📋 待开始 | 2026-04-09 |
+
+### v0.4.0 核心目标
+
+- 🎨 **Web UI 增强** - 多标签页、导出、配置管理
+- ⚡ **性能优化** - 补全响应 <50ms、LRU 缓存、流式传输
+- 📊 **可视化** - EXPLAIN 树形图、数据图表
+- 🔌 **插件生态** - 4 个内置插件、完善 API
 
 ### Phase 完成状态
 
