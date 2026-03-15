@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "mode": "default",
+    "auto_approve": [
+      "Read",
+      "Glob",
+      "Grep",
+      "TaskList",
+      "TaskGet"
+    ],
+    "require_approval": [
+      "Edit",
+      "Write",
+      "Bash",
+      "TaskCreate",
+      "TaskUpdate"
+    ]
+  },
+  "allowed_paths": [
+    "/Users/cq/Documents/git/dbmanager"
+  ],
+  "blocked_patterns": [
+    "**/.env",
+    "**/.env.*",
+    "**/credentials.*",
+    "**/secrets.*",
+    "**/*.key",
+    "**/*.pem"
+  ],
+  "hooks": {},
+  "mcpServers": {}
+}
