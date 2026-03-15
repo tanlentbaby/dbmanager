@@ -62,14 +62,15 @@ describe('CompletionEngine', () => {
   describe('缓存管理', () => {
     it('应该提供缓存状态', () => {
       const status = engine.getCacheStatus();
-      expect(status).toHaveProperty('size');
-      expect(status).toHaveProperty('age');
+      expect(status).toHaveProperty('tableCacheSize');
+      expect(status).toHaveProperty('columnCacheSize');
     });
 
     it('应该清除缓存', () => {
       engine.clearCache();
       const status = engine.getCacheStatus();
-      expect(status.size).toBe(0);
+      expect(status.tableCacheSize).toBe(0);
+      expect(status.columnCacheSize).toBe(0);
     });
   });
 });
