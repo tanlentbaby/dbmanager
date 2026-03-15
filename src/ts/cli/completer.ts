@@ -5,6 +5,7 @@
 
 import { ConnectionManager } from '../database/connection.js';
 import { ConfigManager } from '../config/manager.js';
+import { TTLCache } from '../utils/cache.js';
 
 export interface CompletionItem {
   label: string;
@@ -26,10 +27,9 @@ export class CompletionEngine {
   private configManager: ConfigManager;
   private connectionManager: ConnectionManager;
   
-  // 元数据缓存
-  private tableCache: Map<string, string[]> = new Map();
-  private columnCache: Map<string, string[]> = new Map();
-  private lastCacheUpdate: number = 0;
+  // 元数据缓存 (使用 TTLCache 优化)
+  private tableCache: TTLCache<string, string[]>;
+  private columnCache: TTLCache<string, string[]>;
   private cacheTTL: number = 60000; // 1 分钟
 
   // SQL 关键字
@@ -63,6 +63,8 @@ export class CompletionEngine {
   constructor(configManager: ConfigManager, connectionManager: ConnectionManager) {
     this.configManager = configManager;
     this.connectionManager = connectionManager;
+    this.tableCache = new TTLCache(100, this.cacheTTL);
+    this.columnCache = new TTLCache(500, this.cacheTTL);
   }
 
   /**
@@ -198,19 +200,16 @@ export class CompletionEngine {
       return [];
     }
 
-    // 检查缓存
     const cacheKey = this.connectionManager.currentInstanceName || 'default';
     const cached = this.tableCache.get(cacheKey);
-    const now = Date.now();
-
-    if (cached && now - this.lastCacheUpdate < this.cacheTTL) {
+    
+    if (cached) {
       return cached;
     }
 
     try {
       const tables = await this.connectionManager.getTables();
-      this.tableCache.set(cacheKey, tables);
-      this.lastCacheUpdate = now;
+      this.tableCache.put(cacheKey, tables);
       return tables;
     } catch (error) {
       return [];
@@ -220,13 +219,30 @@ export class CompletionEngine {
   /**
    * 获取列列表（带缓存）
    */
-  private async getColumns(): Promise<string[]> {
+  private async getColumns(tableName?: string): Promise<string[]> {
     if (!this.connectionManager.isConnected) {
       return [];
     }
 
-    // 简化实现：返回常用列名
-    // TODO: 实际应该根据表名获取列
+    // 如果有表名，获取特定表的列
+    if (tableName) {
+      const cacheKey = `${this.connectionManager.currentInstanceName || 'default'}.${tableName}`;
+      const cached = this.columnCache.get(cacheKey);
+      
+      if (cached) {
+        return cached;
+      }
+
+      try {
+        const columns = await this.connectionManager.getColumns(tableName);
+        this.columnCache.put(cacheKey, columns);
+        return columns;
+      } catch (error) {
+        return [];
+      }
+    }
+
+    // 无表名时返回常用列名
     const commonColumns = ['id', 'name', 'email', 'created_at', 'updated_at', 'status', 'type'];
     return commonColumns;
   }
@@ -316,16 +332,15 @@ export class CompletionEngine {
   clearCache(): void {
     this.tableCache.clear();
     this.columnCache.clear();
-    this.lastCacheUpdate = 0;
   }
 
   /**
    * 获取缓存状态
    */
-  getCacheStatus(): { size: number; age: number } {
+  getCacheStatus(): { tableCacheSize: number; columnCacheSize: number } {
     return {
-      size: this.tableCache.size,
-      age: Date.now() - this.lastCacheUpdate,
+      tableCacheSize: this.tableCache.size(),
+      columnCacheSize: this.columnCache.size(),
     };
   }
 }
