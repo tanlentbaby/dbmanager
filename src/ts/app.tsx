@@ -25,7 +25,7 @@ import { CompletionPopup, type CompletionItem } from './components/CompletionPop
 import { highlightSqlSimple, getSqlType } from './utils/highlighter.js';
 import { CommandRegistry } from './utils/commandRegistry.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 
 interface Props {
   configManager: ConfigManager;
