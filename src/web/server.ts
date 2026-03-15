@@ -6,6 +6,9 @@
 import http from 'http';
 import { ConfigManager } from '../config/manager.js';
 import { ConnectionManager } from '../database/connection.js';
+import { TabManager, handleTabsApi } from './api/tabs.js';
+import { handleExportApi, cleanupExpiredFiles } from './api/export.js';
+import { handleConfigsApi } from './api/configs.js';
 
 export interface WebServerOptions {
   port?: number;
@@ -23,6 +26,7 @@ export class WebServer {
   private server?: http.Server;
   private configManager: ConfigManager;
   private connectionManager: ConnectionManager;
+  private tabManager: TabManager;
   private port: number;
   private host: string;
   private enableCors: boolean;
@@ -34,9 +38,13 @@ export class WebServer {
   ) {
     this.configManager = configManager;
     this.connectionManager = connectionManager;
+    this.tabManager = new TabManager(50);
     this.port = options.port || 3000;
     this.host = options.host || 'localhost';
     this.enableCors = options.enableCors ?? true;
+    
+    // 启动时清理过期文件
+    cleanupExpiredFiles();
   }
 
   /**
@@ -115,26 +123,65 @@ export class WebServer {
     res: http.ServerResponse
   ): Promise<void> {
     this.setCorsHeaders(res);
-    res.setHeader('Content-Type', 'application/json');
 
     try {
       const path = url.pathname.replace('/api/', '');
       let response: ApiResponse;
 
-      switch (path) {
-        case 'health':
-          response = { success: true, data: { status: 'ok', version: '0.3.0' } };
-          break;
+      // 健康检查
+      if (path === 'health') {
+        response = { success: true, data: { status: 'ok', version: '0.4.0-dev' } };
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(response));
+        return;
+      }
 
-        case 'configs':
-          if (method === 'GET') {
-            const configs = this.configManager.listConfigs();
-            response = { success: true, data: configs };
-          } else {
-            response = { success: false, error: 'Method not allowed' };
+      // 标签管理 API
+      if (path.startsWith('tabs') || path.startsWith('tabs/')) {
+        res.setHeader('Content-Type', 'application/json');
+        response = await handleTabsApi(path, method, req, res, this.tabManager, this.readBody.bind(this));
+        
+        // 检查是否是直接响应（下载）
+        if (response.error !== 'DIRECT_RESPONSE') {
+          res.end(JSON.stringify(response));
+        }
+        return;
+      }
+
+      // 导出 API
+      if (path.startsWith('export') || path.startsWith('export/')) {
+        res.setHeader('Content-Type', 'application/json');
+        try {
+          response = await handleExportApi(path, method, req, res, this.readBody.bind(this));
+          if (response.error !== 'DIRECT_RESPONSE') {
+            res.end(JSON.stringify(response));
           }
-          break;
+        } catch (error) {
+          if (error instanceof Error && error.message === 'DIRECT_RESPONSE') {
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
 
+      // 配置管理 API
+      if (path.startsWith('configs') || path.startsWith('configs/')) {
+        res.setHeader('Content-Type', 'application/json');
+        response = await handleConfigsApi(
+          path, method, req, res,
+          this.configManager,
+          this.connectionManager,
+          this.readBody.bind(this)
+        );
+        res.end(JSON.stringify(response));
+        return;
+      }
+
+      // 原有 API 处理
+      res.setHeader('Content-Type', 'application/json');
+
+      switch (path) {
         case 'connect':
           if (method === 'POST') {
             const body = await this.readBody(req);
@@ -173,33 +220,26 @@ export class WebServer {
   /**
    * 提供 Web 界面
    */
-  private serveWebUi(res: http.ServerResponse): void {
-    res.setHeader('Content-Type', 'text/html');
-    res.writeHead(200);
-    res.end(`
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DBManager Web UI</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .header { background: #007bff; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .editor { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    textarea { width: 100%; height: 200px; font-family: monospace; font-size: 14px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; }
-    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 10px; }
-    button:hover { background: #0056b3; }
-    .results { margin-top: 20px; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f8f9fa; font-weight: 600; }
-    .status { padding: 10px; border-radius: 4px; margin-bottom: 10px; }
-    .status.success { background: #d4edda; color: #155724; }
-    .status.error { background: #f8d7da; color: #721c24; }
-  </style>
-</head>
+  private async serveWebUi(res: http.ServerResponse): Promise<void> {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    
+    try {
+      const content = fs.readFileSync(indexPath, 'utf8');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.writeHead(200);
+      res.end(content);
+    } catch (error) {
+      res.setHeader('Content-Type', 'text/html');
+      res.writeHead(500);
+      res.end('<h1>500 - Internal Server Error</h1><p>Could not load Web UI</p>');
+    }
+  }
 <body>
   <div class="container">
     <div class="header">

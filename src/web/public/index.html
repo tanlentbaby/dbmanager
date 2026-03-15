@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBManager Web UI v0.4.0</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #1e1e1e; color: #d4d4d4; height: 100vh; display: flex; flex-direction: column; }
+    
+    /* 顶部栏 */
+    .header { background: #2d2d30; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #3e3e42; }
+    .header h1 { font-size: 16px; color: #007acc; }
+    .header-actions { display: flex; gap: 8px; }
+    
+    /* 标签栏 */
+    .tabs-bar { background: #252526; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid #3e3e42; min-height: 36px; }
+    .tab { padding: 6px 12px; background: #2d2d30; border-radius: 4px 4px 0 0; margin-right: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; border: 1px solid #3e3e42; border-bottom: none; }
+    .tab.active { background: #1e1e1e; border-color: #3e3e42; }
+    .tab:hover { background: #3e3e42; }
+    .tab-close { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #888; }
+    .tab-close:hover { background: #f48771; color: #fff; }
+    .tab-add { padding: 6px 12px; cursor: pointer; color: #888; font-size: 18px; }
+    .tab-add:hover { color: #007acc; }
+    
+    /* 主内容区 */
+    .main { flex: 1; display: flex; overflow: hidden; }
+    
+    /* 侧边栏 */
+    .sidebar { width: 240px; background: #252526; border-right: 1px solid #3e3e42; display: flex; flex-direction: column; }
+    .sidebar-section { padding: 12px; border-bottom: 1px solid #3e3e42; }
+    .sidebar-title { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+    .config-item { padding: 6px 8px; cursor: pointer; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .config-item:hover { background: #3e3e42; }
+    .config-item.active { background: #37373d; }
+    .db-icon { width: 16px; text-align: center; }
+    
+    /* 查询区 */
+    .query-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .editor-container { flex: 1; display: flex; flex-direction: column; border-bottom: 1px solid #3e3e42; }
+    .editor-toolbar { padding: 8px; background: #2d2d30; display: flex; gap: 8px; align-items: center; }
+    .btn { padding: 6px 12px; background: #0e639c; color: #fff; border: none; border-radius: 2px; cursor: pointer; font-size: 13px; }
+    .btn:hover { background: #1177bb; }
+    .btn-secondary { background: #3e3e42; }
+    .btn-secondary:hover { background: #4e4e52; }
+    #sqlEditor { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 12px; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; resize: none; outline: none; }
+    
+    /* 结果区 */
+    .results-container { height: 50%; background: #1e1e1e; overflow: auto; }
+    .results-header { padding: 8px 12px; background: #2d2d30; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3e3e42; }
+    .results-info { font-size: 12px; color: #888; }
+    .export-select { background: #3e3e42; color: #d4d4d4; border: 1px solid #555; padding: 4px 8px; border-radius: 2px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #3e3e42; padding: 8px; text-align: left; }
+    th { background: #2d2d30; color: #007acc; font-weight: 600; position: sticky; top: 0; }
+    tr:hover { background: #2a2d2e; }
+    .null { color: #888; font-style: italic; }
+    
+    /* 状态消息 */
+    .status { padding: 8px 12px; font-size: 13px; }
+    .status.success { background: #4ec9b0; color: #1e1e1e; }
+    .status.error { background: #f48771; color: #1e1e1e; }
+    .status.info { background: #007acc; color: #fff; }
+    
+    /* 历史记录 */
+    .history-list { max-height: 200px; overflow-y: auto; }
+    .history-item { padding: 6px 8px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #3e3e42; }
+    .history-item:hover { background: #3e3e42; }
+    .history-sql { font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-meta { font-size: 11px; color: #888; margin-top: 2px; }
+    
+    /* 滚动条 */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #1e1e1e; }
+    ::-webkit-scrollbar-thumb { background: #424242; border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4e4e4e; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚀 DBManager Web UI <span style="color:#888;font-size:12px;">v0.4.0-dev</span></h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="refreshConfigs()">🔄 刷新</button>
+      <button class="btn" onclick="showNewConfigModal()">➕ 新配置</button>
+    </div>
+  </div>
+  
+  <div class="tabs-bar" id="tabsBar">
+    <div class="tab-add" onclick="createNewTab()" title="新建标签">+</div>
+  </div>
+  
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">数据库配置</div>
+        <div id="configsList"></div>
+      </div>
+      <div class="sidebar-section" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
+        <div class="sidebar-title">查询历史</div>
+        <div class="history-list" id="historyList" style="flex:1; overflow-y:auto;"></div>
+      </div>
+    </div>
+    
+    <div class="query-area">
+      <div class="editor-container">
+        <div class="editor-toolbar">
+          <button class="btn" onclick="executeQuery()">▶ 执行</button>
+          <button class="btn btn-secondary" onclick="clearEditor()">🗑 清空</button>
+          <span id="statusMessage" class="status" style="display:none;"></span>
+        </div>
+        <textarea id="sqlEditor" placeholder="输入 SQL 查询...&#10;&#10;示例:&#10;SELECT * FROM users LIMIT 100;&#10;SHOW TABLES;"></textarea>
+      </div>
+      
+      <div class="results-container" id="resultsContainer" style="display:none;">
+        <div class="results-header">
+          <span class="results-info" id="resultsInfo">查询结果</span>
+          <select class="export-select" id="exportFormat" onchange="exportResults()">
+            <option value="">导出...</option>
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+            <option value="excel">Excel</option>
+            <option value="markdown">Markdown</option>
+            <option value="sql">SQL</option>
+          </select>
+        </div>
+        <div id="tableContainer"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // 状态
+    let configs = [];
+    let tabs = [];
+    let activeTabId = null;
+    let activeConfig = null;
+    let currentResult = null;
+    
+    // 初始化
+    async function init() {
+      await loadConfigs();
+      await loadTabs();
+      
+      // 如果没有标签，创建一个
+      if (tabs.length === 0) {
+        createNewTab();
+      }
+    }
+    
+    // 加载配置
+    async function loadConfigs() {
+      try {
+        const res = await fetch('/api/configs');
+        const data = await res.json();
+        if (data.success) {
+          configs = data.data;
+          renderConfigs();
+        }
+      } catch (err) {
+        showStatus('加载配置失败：' + err.message, 'error');
+      }
+    }
+    
+    // 渲染配置列表
+    function renderConfigs() {
+      const container = document.getElementById('configsList');
+      container.innerHTML = configs.map(c => `
+        <div class="config-item ${activeConfig === c.name ? 'active' : ''}" onclick="selectConfig('${c.name}')">
+          <span class="db-icon">${getDbIcon(c.type)}</span>
+          <span>${c.name}</span>
+        </div>
+      `).join('');
+    }
+    
+    function getDbIcon(type) {
+      const icons = { mysql: '🐬', postgres: '🐘', sqlite: '🗄', default: '📊' };
+      return icons[type] || icons.default;
+    }
+    
+    // 选择配置
+    async function selectConfig(name) {
+      activeConfig = name;
+      renderConfigs();
+      
+      if (activeTabId) {
+        await updateTabConfig(activeTabId, name);
+      }
+      showStatus(`已选择配置：${name}`, 'info');
+    }
+    
+    // 加载标签
+    async function loadTabs() {
+      try {
+        const res = await fetch('/api/tabs');
+        const data = await res.json();
+        if (data.success) {
+          tabs = data.data;
+          renderTabs();
+        }
+      } catch (err) {
+        console.error('加载标签失败:', err);
+      }
+    }
+    
+    // 渲染标签
+    function renderTabs() {
+      const bar = document.getElementById('tabsBar');
+      const addBtn = bar.querySelector('.tab-add');
+      
+      const tabsHtml = tabs.map(t => `
+        <div class="tab ${t.id === activeTabId ? 'active' : ''}" onclick="switchToTab('${t.id}')">
+          <span>${t.title}</span>
+          <span class="tab-close" onclick="event.stopPropagation(); closeTab('${t.id}')">×</span>
+        </div>
+      `).join('');
+      
+      bar.innerHTML = tabsHtml + addBtn.outerHTML;
+    }
+    
+    // 创建新标签
+    async function createNewTab() {
+      const configName = activeConfig || (configs[0]?.name);
+      
+      try {
+        const res = await fetch('/api/tabs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ configId: configName, configName })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          tabs.push(data.data);
+          switchToTab(data.data.id);
+          await loadTabs();
+        }
+      } catch (err) {
+        showStatus('创建标签失败：' + err.message, 'error');
+      }
+    }
+    
+    // 切换标签
+    async function switchToTab(tabId) {
+      activeTabId = tabId;
+      const tab = tabs.find(t => t.id === tabId);
+      
+      if (tab) {
+        await fetch(`/api/tabs/${tabId}`, { method: 'PUT', body: JSON.stringify({}) });
+        document.getElementById('sqlEditor').value = tab.currentSql || '';
+        activeConfig = tab.configName;
+        renderConfigs();
+        renderTabs();
+        loadTabHistory(tabId);
+      }
+    }
+    
+    // 关闭标签
+    async function closeTab(tabId) {
+      try {
+        await fetch(`/api/tabs/${tabId}`, { method: 'DELETE' });
+        tabs = tabs.filter(t => t.id !== tabId);
+        
+        if (activeTabId === tabId) {
+          activeTabId = tabs[0]?.id || null;
+          if (activeTabId) {
+            switchToTab(activeTabId);
+          }
+        }
+        
+        renderTabs();
+      } catch (err) {
+        showStatus('关闭标签失败：' + err.message, 'error');
+      }
+    }
+    
+    // 更新标签配置
+    async function updateTabConfig(tabId, configName) {
+      const tab = tabs.find(t => t.id === tabId);
+      if (tab) {
+        tab.configName = configName;
+        await fetch(`/api/tabs/${tabId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ configName })
+        });
+      }
+    }
+    
+    // 加载标签历史
+    async function loadTabHistory(tabId) {
+      try {
+        const res = await fetch(`/api/tabs/${tabId}/history`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const container = document.getElementById('historyList');
+          container.innerHTML = data.data.map(h => `
+            <div class="history-item" onclick="loadHistorySql('${escapeHtml(h.sql)}')">
+              <div class="history-sql">${escapeHtml(h.sql)}</div>
+              <div class="history-meta">${new Date(h.executedAt).toLocaleTimeString()} - ${h.success ? '✓' : '✗'} ${h.rowCount !== undefined ? h.rowCount + ' rows' : ''}</div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('加载历史失败:', err);
+      }
+    }
+    
+    function loadHistorySql(sql) {
+      document.getElementById('sqlEditor').value = sql;
+    }
+    
+    // 执行查询
+    async function executeQuery() {
+      const sql = document.getElementById('sqlEditor').value.trim();
+      if (!sql) {
+        showStatus('请输入 SQL 查询', 'info');
+        return;
+      }
+      
+      if (!activeConfig) {
+        showStatus('请先选择数据库配置', 'error');
+        return;
+      }
+      
+      showStatus('执行中...', 'info');
+      
+      try {
+        const startTime = Date.now();
+        const res = await fetch('/api/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql, config: activeConfig })
+        });
+        
+        const result = await res.json();
+        const duration = Date.now() - startTime;
+        
+        if (result.success) {
+          currentResult = result.data;
+          renderResults(result.data, duration);
+          showStatus(`✓ 查询成功 (${duration}ms)`, 'success');
+          
+          // 保存历史
+          if (activeTabId) {
+            await fetch(`/api/tabs/${activeTabId}/history`, {
+              method: 'POST',
+              body: JSON.stringify({
+                sql,
+                executedAt: Date.now(),
+                duration,
+                success: true,
+                rowCount: result.data?.rowCount || result.data?.rows?.length || 0
+              })
+            });
+            loadTabHistory(activeTabId);
+          }
+        } else {
+          showStatus('✗ ' + result.error, 'error');
+          
+          // 保存失败历史
+          if (activeTabId) {
+            await fetch(`/api/tabs/${activeTabId}/history`, {
+              method: 'POST',
+              body: JSON.stringify({
+                sql,
+                executedAt: Date.now(),
+                duration,
+                success: false,
+                error: result.error
+              })
+            });
+          }
+        }
+      } catch (err) {
+        showStatus('执行失败：' + err.message, 'error');
+      }
+    }
+    
+    // 渲染结果
+    function renderResults(data, duration) {
+      const container = document.getElementById('resultsContainer');
+      const tableContainer = document.getElementById('tableContainer');
+      const info = document.getElementById('resultsInfo');
+      
+      if (!data.columns || data.columns.length === 0) {
+        info.textContent = `无数据 (${duration}ms)`;
+        tableContainer.innerHTML = '';
+        container.style.display = 'block';
+        return;
+      }
+      
+      const rowCount = data.rows?.length || 0;
+      info.textContent = `${rowCount} 行 • ${duration}ms`;
+      
+      let html = '<table><thead><tr>';
+      data.columns.forEach(col => {
+        html += `<th>${escapeHtml(col)}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      
+      data.rows.forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => {
+          if (cell === null || cell === undefined) {
+            html += '<td class="null">NULL</td>';
+          } else {
+            html += `<td>${escapeHtml(String(cell))}</td>`;
+          }
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      tableContainer.innerHTML = html;
+      container.style.display = 'block';
+    }
+    
+    // 导出结果
+    async function exportResults() {
+      const format = document.getElementById('exportFormat').value;
+      if (!format || !currentResult) return;
+      
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ result: currentResult, format })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          // 触发下载
+          window.location.href = `/api/export/${data.data.fileId}/download`;
+          showStatus(`✓ 已导出为 ${format.toUpperCase()}`, 'success');
+        } else {
+          showStatus('导出失败：' + data.error, 'error');
+        }
+      } catch (err) {
+        showStatus('导出失败：' + err.message, 'error');
+      }
+      
+      document.getElementById('exportFormat').value = '';
+    }
+    
+    // 清空编辑器
+    function clearEditor() {
+      document.getElementById('sqlEditor').value = '';
+    }
+    
+    // 刷新配置
+    function refreshConfigs() {
+      loadConfigs();
+      showStatus('配置已刷新', 'info');
+    }
+    
+    // 显示状态消息
+    function showStatus(message, type) {
+      const el = document.getElementById('statusMessage');
+      el.textContent = message;
+      el.className = 'status ' + type;
+      el.style.display = 'block';
+      
+      setTimeout(() => {
+        el.style.display = 'none';
+      }, 3000);
+    }
+    
+    // HTML 转义
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // 启动
+    init();
+  </script>
+</body>
+</html>
