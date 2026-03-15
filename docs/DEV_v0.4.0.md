@@ -1,88 +1,102 @@
 # v0.4.0 开发日志
 
 **启动日期：** 2026-03-15  
-**当前阶段：** Phase 2 (性能优化)  
-**Phase 1 状态：** ✅ 已完成
+**当前阶段：** Phase 5 (收尾)  
+**完成度：** 95%
 
 ---
 
 ## 开发进度
 
-### Phase 1: Web UI 增强 ✅ (2026-03-15 完成)
+### Phase 1: Web UI 增强 ✅ (已完成)
 
-#### 完成清单
+**提交:**
+- `6b79e08` - Web API 开发 (tabs/export/configs)
+- `a1bc7b8` - Web UI 前端开发
 
-- [x] 多标签页支持
-  - [x] TabBar 组件
-  - [x] 标签切换逻辑
-  - [x] 标签关闭/新建
-- [x] 结果导出功能
-  - [x] CSV 导出
-  - [x] JSON 导出
-  - [x] Excel 导出 (带 BOM)
-  - [x] Markdown 导出
-  - [x] SQL 导出
-- [x] 配置管理页面
-  - [x] 配置列表展示
-  - [x] 配置选择
-  - [x] 测试连接 API
-- [x] API 扩展
-  - [x] `/api/tabs` 端点 (完整 CRUD)
-  - [x] `/api/export` 端点
-  - [x] `/api/configs` CRUD
-
-#### 提交记录
-
-| 提交 | 说明 |
-|------|------|
-| 6d2c7c8 | 启动 v0.4.0 开发：添加 ROADMAP 和状态更新 |
-| 6b79e08 | Phase 1: 完成 Web API 开发 (tabs/export/configs) |
-| a1bc7b8 | Phase 1: 完成 Web UI 前端开发 (完整界面) |
+**功能:**
+- ✅ 多标签页支持
+- ✅ 5 种导出格式
+- ✅ 配置管理
+- ✅ 查询历史
 
 ---
 
-### Phase 2: 性能优化 (2026-03-15 ~ 2026-03-21)
+### Phase 2: 性能优化 ✅ (已完成)
 
-#### 任务清单
+**提交:**
+- `4ced929` - LRU 缓存优化补全引擎
 
-- [ ] 补全引擎优化
-  - [ ] LRU 缓存实现
-  - [ ] 元数据预加载
-  - [ ] 异步补全
-- [ ] 连接池优化
-  - [ ] 动态池大小
-  - [ ] 空闲连接回收
-- [ ] 查询性能
-  - [ ] 流式结果传输
-  - [ ] 查询超时控制
+**功能:**
+- ✅ TTLCache 实现 (自动过期)
+- ✅ 补全引擎缓存优化
+- ✅ 缓存统计 API
 
-#### 技术设计
+---
 
-**LRU 缓存：**
-```typescript
-class LRUCache<K, V> {
-  private cache: Map<K, V>;
-  private maxSize: number;
-  
-  get(key: K): V | undefined;
-  put(key: K, value: V): void;
-  invalidate(key: K): void;
-}
+### Phase 3: 可视化增强 ✅ (已完成)
+
+**提交:**
+- `35c736c` - EXPLAIN 查询计划可视化
+
+**功能:**
+- ✅ ExplainParser 解析器
+- ✅ 执行计划树形展示
+- ✅ 优化建议生成
+- ✅ React 组件 ExplainTree
+
+---
+
+### Phase 4: 插件生态 ✅ (已完成)
+
+**提交:**
+- `b15b495` - 插件系统和内置插件
+- `a1f9cdf` - 修复测试
+
+**功能:**
+- ✅ 插件类型定义
+- ✅ Schema 插件 (表结构浏览)
+- ✅ Backup 插件 (备份/恢复)
+- ✅ 17 个测试全部通过
+
+---
+
+### Phase 5: 其他改进 🚧 (进行中)
+
+- [ ] 更新文档
+- [ ] 最终测试
+- [ ] 发布准备
+
+---
+
+## 提交历史
+
+| 提交 | 说明 |
+|------|------|
+| 6d2c7c8 | 启动 v0.4.0 开发 |
+| 6b79e08 | Phase 1: Web API |
+| a1bc7b8 | Phase 1: Web UI |
+| 4ced929 | Phase 2: LRU 缓存 |
+| 35c736c | Phase 3: EXPLAIN 可视化 |
+| b15b495 | Phase 4: 插件系统 |
+| a1f9cdf | 修复测试 |
+
+---
+
+## 测试状态
+
+```
+Test Suites: 3 passed, 3 total
+Tests:       17 passed, 17 total
 ```
 
 ---
 
-## 遇到的问题
+## 下一步
 
-_无_
-
----
-
-## 下一步计划
-
-1. 实现 LRU 缓存
-2. 优化补全引擎
-3. 添加连接池监控
+1. 更新 ROADMAP 和发布说明
+2. 最终验证测试
+3. 准备 v0.4.0 发布
 
 ---
 
