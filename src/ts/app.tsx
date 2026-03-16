@@ -24,6 +24,7 @@ import { CommandPalette } from './components/CommandPalette.js';
 import { CompletionPopup, type CompletionItem } from './components/CompletionPopup.js';
 import { highlightSqlSimple, getSqlType } from './utils/highlighter.js';
 import { CommandRegistry } from './utils/commandRegistry.js';
+import { SqlDiagnoser } from './utils/sqlDiagnoser.js';
 
 const VERSION = '0.4.0';
 
@@ -369,7 +370,9 @@ export const App: React.FC<Props> = ({ configManager, connectionManager }) => {
       const result = await connectionManager.execute(sql);
       formatResult(result);
     } catch (error) {
-      addOutput(`错误：${error instanceof Error ? error.message : '未知错误'}\n`, 'error');
+      // 使用智能诊断
+      const diagnostic = SqlDiagnoser.diagnose(error, sql);
+      addOutput(SqlDiagnoser.formatResult(diagnostic), 'error');
     } finally {
       setIsProcessing(false);
     }

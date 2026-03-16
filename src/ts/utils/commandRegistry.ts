@@ -163,6 +163,40 @@ export class CommandRegistry {
       usage: '/use <数据库名>',
       category: 'other',
     },
+
+    // 智能助手（v0.5.0 新增）
+    {
+      name: 'diagnose',
+      aliases: ['diag'],
+      description: 'SQL 错误诊断（v0.5.0 新功能）',
+      usage: '/diagnose <错误消息或代码>',
+      category: 'sql',
+    },
+
+    // CLI 体验增强（v0.5.0 新增）
+    {
+      name: 'bookmark',
+      aliases: ['bm'],
+      description: '查询书签管理（v0.5.0 新功能）',
+      usage: '/bookmark <子命令> [参数]',
+      category: 'other',
+    },
+
+    // 智能助手（v0.5.0 新增）
+    {
+      name: 'optimize',
+      aliases: ['opt'],
+      description: 'SQL 查询优化建议（v0.5.0 新功能）',
+      usage: '/optimize <SQL 语句>',
+      category: 'sql',
+    },
+    {
+      name: 'nl2sql',
+      aliases: ['nl'],
+      description: '自然语言生成 SQL（v0.5.0 新功能）',
+      usage: '/nl2sql <自然语言描述>',
+      category: 'sql',
+    },
   ];
 
   /**

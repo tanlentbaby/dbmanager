@@ -305,3 +305,81 @@ export function getExplainSuggestions(rows: ExplainRow[]): OptimizationSuggestio
   const plan = parser.parse(rows);
   return parser.suggest(plan);
 }
+
+/**
+ * 渲染 EXPLAIN 分析报告（v0.5.0 增强版）
+ */
+export function renderExplainReport(rows: ExplainRow[]): string {
+  const parser = new ExplainParser();
+  const plan = parser.parse(rows);
+  const suggestions = parser.suggest(plan);
+
+  const lines: string[] = [];
+
+  lines.push('');
+  lines.push('╔══════════════════════════════════════════════════════════╗');
+  lines.push('║  📊 查询执行计划分析报告                                 ║');
+  lines.push('╚══════════════════════════════════════════════════════════╝');
+  lines.push('');
+
+  // 执行计划树
+  lines.push('┌─────────────────────────────────────────────────────────');
+  lines.push('│ 执行计划');
+  lines.push('├─────────────────────────────────────────────────────────');
+  lines.push(parser.toTextTree(plan));
+  lines.push('└─────────────────────────────────────────────────────────');
+  lines.push('');
+
+  // 统计信息
+  lines.push('┌─────────────────────────────────────────────────────────');
+  lines.push('│ 统计信息');
+  lines.push('├─────────────────────────────────────────────────────────');
+  if (plan.totalCost !== undefined) {
+    lines.push(`│ 预估总成本：${plan.totalCost.toLocaleString()}`);
+  }
+  if (plan.totalRows !== undefined) {
+    lines.push(`│ 预估总行数：${plan.totalRows.toLocaleString()}`);
+  }
+  lines.push(`│ 节点数量：${countNodes(plan.root)}`);
+  lines.push('└─────────────────────────────────────────────────────────');
+  lines.push('');
+
+  // 优化建议
+  if (suggestions.length > 0) {
+    lines.push('┌─────────────────────────────────────────────────────────');
+    lines.push('│ 优化建议');
+    lines.push('├─────────────────────────────────────────────────────────');
+
+    suggestions.forEach((s, index) => {
+      const icon = s.severity === 'critical' ? '🔴' : s.severity === 'warning' ? '🟡' : '🟢';
+      lines.push('│');
+      lines.push(`│ ${index + 1}. ${icon} [${s.severity.toUpperCase()}] ${s.message}`);
+      if (s.affectedTable) {
+        lines.push(`│    表：${s.affectedTable}`);
+      }
+      lines.push(`│    建议：${s.suggestion}`);
+    });
+
+    lines.push('│');
+    lines.push('└─────────────────────────────────────────────────────────');
+  } else {
+    lines.push('✅ 查询计划良好，无需优化');
+  }
+
+  lines.push('');
+  lines.push('💡 提示：使用 /explain <SQL> 分析其他查询');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/**
+ * 计算节点数量
+ */
+function countNodes(node: PlanNode): number {
+  let count = 1;
+  for (const child of node.children) {
+    count += countNodes(child);
+  }
+  return count;
+}
