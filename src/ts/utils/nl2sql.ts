@@ -417,48 +417,66 @@ export class NL2SQLConverter {
   private extractConditions(input: string): Condition[] {
     const conditions: Condition[] = [];
     
+    // 动词前缀列表，需要从列名前移除
+    const verbPrefixes = ['查找', '查询', '搜索', '显示', '列出', '查看', '找到'];
+    
+    /**
+     * 清理列名，移除动词前缀和多余空格
+     */
+    const cleanColumnName = (raw: string): string => {
+      let column = raw.trim();
+      // 移除动词前缀
+      for (const verb of verbPrefixes) {
+        if (column.startsWith(verb)) {
+          column = column.substring(verb.length).trim();
+        }
+      }
+      return column;
+    };
+    
     // 查找 "年龄大于 25" 模式 - 提取列名
     const gtIndex = input.indexOf('大于');
     if (gtIndex > 0) {
-      // 向前找列名（最多 10 个字符）
-      const before = input.substring(Math.max(0, gtIndex - 10), gtIndex).trim();
+      // 向前找列名（最多 15 个字符）
+      const before = input.substring(Math.max(0, gtIndex - 15), gtIndex).trim();
       const after = input.substring(gtIndex + 2).trim();
       const numMatch = after.match(/^(\d+)/);
-      // 提取最后一个词作为列名（支持中文，排除动词）
-      const colMatch = before.match(/([^\s,]+)$/);
-      if (numMatch && colMatch) {
-        let column = colMatch[1];
-        // 排除常见动词前缀
-        if (column === '查找' || column === '查询' || column === '搜索') {
-          // 尝试再往前找
-          const before2 = before.substring(0, before.length - column.length).trim();
-          const colMatch2 = before2.match(/([^\s,]+)$/);
-          if (colMatch2) {
-            column = colMatch2[1];
+      if (numMatch && before.length > 0) {
+        // 提取最后一个词作为列名（支持中文）
+        const colMatch = before.match(/([\u4e00-\u9fa5a-zA-Z_][\u4e00-\u9fa5a-zA-Z0-9_]*)$/);
+        if (colMatch) {
+          const column = cleanColumnName(colMatch[1]);
+          if (column.length > 0) {
+            conditions.push({
+              column,
+              operator: '>',
+              value: parseInt(numMatch[1]),
+              logicalOp: 'AND',
+            });
           }
         }
-        conditions.push({
-          column,
-          operator: '>',
-          value: parseInt(numMatch[1]),
-          logicalOp: 'AND',
-        });
       }
     }
     
     // 查找 "年龄小于 25" 模式
     const ltIndex = input.indexOf('小于');
     if (ltIndex > 0) {
-      const before = input.substring(Math.max(0, ltIndex - 10), ltIndex).trim();
+      const before = input.substring(Math.max(0, ltIndex - 15), ltIndex).trim();
       const after = input.substring(ltIndex + 2).trim();
       const numMatch = after.match(/^(\d+)/);
       if (numMatch && before.length > 0) {
-        conditions.push({
-          column: before,
-          operator: '<',
-          value: parseInt(numMatch[1]),
-          logicalOp: 'AND',
-        });
+        const colMatch = before.match(/([\u4e00-\u9fa5a-zA-Z_][\u4e00-\u9fa5a-zA-Z0-9_]*)$/);
+        if (colMatch) {
+          const column = cleanColumnName(colMatch[1]);
+          if (column.length > 0) {
+            conditions.push({
+              column,
+              operator: '<',
+              value: parseInt(numMatch[1]),
+              logicalOp: 'AND',
+            });
+          }
+        }
       }
     }
     
@@ -467,16 +485,19 @@ export class NL2SQLConverter {
     if (eqIndex > 0) {
       const before = input.substring(Math.max(0, eqIndex - 20), eqIndex).trim();
       const after = input.substring(eqIndex + 2).trim();
-      // 提取列名（最后一个词）
-      const colMatch = before.match(/(\w+)$/);
+      // 提取列名（最后一个词，支持中文）
+      const colMatch = before.match(/([\u4e00-\u9fa5a-zA-Z_][\u4e00-\u9fa5a-zA-Z0-9_]*)$/);
       const numMatch = after.match(/^['"]?([^'"\s,]+)/);
       if (colMatch && numMatch) {
-        conditions.push({
-          column: colMatch[1],
-          operator: '=',
-          value: numMatch[1],
-          logicalOp: 'AND',
-        });
+        const column = cleanColumnName(colMatch[1]);
+        if (column.length > 0) {
+          conditions.push({
+            column,
+            operator: '=',
+            value: numMatch[1],
+            logicalOp: 'AND',
+          });
+        }
       }
     }
     
@@ -492,10 +513,11 @@ export class NL2SQLConverter {
     const parts = conditions.map((cond, index) => {
       const value = typeof cond.value === 'string' ? `'${cond.value}'` : String(cond.value);
       const logicalOp = index > 0 ? (cond.logicalOp || 'AND') : '';
-      return `${logicalOp} ${cond.column} ${cond.operator} ${value}`;
+      const prefix = index > 0 ? ' ' : '';
+      return `${prefix}${logicalOp ? logicalOp + ' ' : ''}${cond.column} ${cond.operator} ${value}`;
     });
     
-    return `WHERE ${parts.join(' ')}`;
+    return `WHERE ${parts.join('')}`;
   }
 
   /**
@@ -515,8 +537,10 @@ export class NL2SQLConverter {
     
     if (startIndex >= 0 && endIndex > startIndex) {
       let column = input.substring(startIndex + 1, endIndex).trim();
-      // 去掉"降序"/"升序"
-      column = column.replace(/降序 | 升序/g, '').trim();
+      // 去掉"降序"/"升序"以及多余的空格
+      column = column.replace(/降序|升序/g, '').trim();
+      // 清理可能的后缀词（如"的"）
+      column = column.replace(/的$/g, '').trim();
       
       if (column.length > 0) {
         orderBy.push({

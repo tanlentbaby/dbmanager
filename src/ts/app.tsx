@@ -26,7 +26,7 @@ import { highlightSqlSimple, getSqlType } from './utils/highlighter.js';
 import { CommandRegistry } from './utils/commandRegistry.js';
 import { SqlDiagnoser } from './utils/sqlDiagnoser.js';
 
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 
 interface Props {
   configManager: ConfigManager;

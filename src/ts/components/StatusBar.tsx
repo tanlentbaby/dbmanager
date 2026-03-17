@@ -15,7 +15,8 @@ interface StatusBarProps {
   port?: number;
   database?: string;
   outputFormat?: string;
-  mode?: 'normal' | 'commandPalette' | 'completion' | 'select';
+  mode?: 'normal' | 'commandPalette' | 'completion' | 'select' | 'help';
+  historyCount?: number;
 }
 
 // 快捷键提示列表
@@ -72,6 +73,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <Text backgroundColor="yellow" color="black">
             {' '}
             选择模式
+          </Text>
+        );
+      case 'help':
+        return (
+          <Text backgroundColor="magenta" color="white">
+            {' '}
+            📖 帮助
           </Text>
         );
       default:
