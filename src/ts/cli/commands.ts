@@ -12,6 +12,7 @@ import { BookmarkManager } from '../utils/bookmarks.js';
 import { QueryOptimizer } from '../utils/queryOptimizer.js';
 import { NL2SQLConverter } from '../utils/nl2sql.js';
 import { IndexAdvisor } from '../utils/indexAdvisor.js';
+import { SqlAutoFixer } from '../utils/sqlAutoFixer.js';
 
 type OutputStyle = 'output' | 'error' | 'success' | 'warning' | 'dim' | 'bold' | 'command';
 type AddOutputFn = (text: string, style?: OutputStyle) => void;
@@ -26,6 +27,7 @@ export class CommandHandler {
   private queryOptimizer: QueryOptimizer;
   private nl2sqlConverter: NL2SQLConverter;
   private indexAdvisor: IndexAdvisor;
+  private sqlAutoFixer: SqlAutoFixer;
 
   constructor(
     configManager: ConfigManager,
@@ -41,6 +43,7 @@ export class CommandHandler {
     this.queryOptimizer = new QueryOptimizer();
     this.nl2sqlConverter = new NL2SQLConverter();
     this.indexAdvisor = new IndexAdvisor();
+    this.sqlAutoFixer = new SqlAutoFixer();
   }
 
   /**
@@ -85,6 +88,7 @@ export class CommandHandler {
       nl2sql: () => this.handleNL2SQL(args),
       nl: () => this.handleNL2SQL(args),
       'suggest-index': () => this.handleSuggestIndex(args),
+      'fix-sql': () => this.handleFixSql(args),
     };
 
     const handler = handlers[cmd];
@@ -1338,4 +1342,72 @@ SQL 执行:
 `, 'output');
   }
 
+  /**
+   * /fix-sql 命令 - SQL 自动修复
+   */
+  private handleFixSql(args: string[]): void {
+    if (args.length === 0) {
+      this.showFixSqlHelp();
+      return;
+    }
+
+    const sql = args.join(' ');
+
+    try {
+      // 分析 SQL 并生成修复建议
+      const result = this.sqlAutoFixer.analyze(sql);
+
+      // 格式化输出
+      const output = this.sqlAutoFixer.formatResult(result);
+      this.addOutput(output, 'output');
+
+      // 如果有高置信度修复，提示可以直接应用
+      if (result.canAutoFix && result.suggestions.length > 0) {
+        this.addOutput('\n💡 提示：输入 /fix-sql apply 应用建议的修复', 'dim');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.addOutput(`❌ SQL 修复分析失败：${errorMessage}`, 'error');
+    }
+  }
+
+  /**
+   * 显示 SQL 修复帮助
+   */
+  private showFixSqlHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  🔧 SQL 自动修复 - v0.6.0                                ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /fix-sql <SQL 语句>        分析并修复 SQL 错误
+  /fix-sql apply             应用上一个建议的修复（待实现）
+
+功能：
+  - 语法错误检测（缺少子句、括号不匹配等）
+  - 拼写错误纠正（SELEC → SELECT, FORM → FROM 等）
+  - 关键字模糊匹配（Levenshtein 距离算法）
+  - 智能修复建议（带置信度评分）
+
+示例：
+  /fix-sql SELEC * FORM users WHER id = 1
+  /fix-sql SELECT * FROM users WHERE
+  /fix-sql UPDATE users SET name = 'test'
+  /fix-sql INSERT INTO users (name)
+
+常见修复：
+  - SELECT 拼写错误 → SELECT
+  - FROM 拼写错误 → FROM
+  - WHERE 拼写错误 → WHERE
+  - 缺少 FROM 子句 → 自动添加
+  - 括号不匹配 → 自动闭合
+
+注意：
+  - 修复建议带有置信度评分
+  - 高置信度（>80%）建议可直接应用
+  - 复杂错误可能需要手动修正
+
+`, 'output');
+  }
 }

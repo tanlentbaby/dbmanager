@@ -206,6 +206,13 @@ export class CommandRegistry {
       usage: '/suggest-index <SQL 语句>',
       category: 'sql',
     },
+    {
+      name: 'fix-sql',
+      aliases: [],
+      description: 'SQL 自动修复（v0.6.0 新功能）',
+      usage: '/fix-sql <SQL 语句>',
+      category: 'sql',
+    },
   ];
 
   /**
