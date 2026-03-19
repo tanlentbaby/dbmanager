@@ -197,6 +197,15 @@ export class CommandRegistry {
       usage: '/nl2sql <自然语言描述>',
       category: 'sql',
     },
+
+    // AI 增强（v0.6.0 新增）
+    {
+      name: 'suggest-index',
+      aliases: [],
+      description: '自动索引建议（v0.6.0 新功能）',
+      usage: '/suggest-index <SQL 语句>',
+      category: 'sql',
+    },
   ];
 
   /**

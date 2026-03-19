@@ -11,6 +11,7 @@ import { renderExplainReport } from '../utils/explain.js';
 import { BookmarkManager } from '../utils/bookmarks.js';
 import { QueryOptimizer } from '../utils/queryOptimizer.js';
 import { NL2SQLConverter } from '../utils/nl2sql.js';
+import { IndexAdvisor } from '../utils/indexAdvisor.js';
 
 type OutputStyle = 'output' | 'error' | 'success' | 'warning' | 'dim' | 'bold' | 'command';
 type AddOutputFn = (text: string, style?: OutputStyle) => void;
@@ -24,6 +25,7 @@ export class CommandHandler {
   private bookmarkManager: BookmarkManager;
   private queryOptimizer: QueryOptimizer;
   private nl2sqlConverter: NL2SQLConverter;
+  private indexAdvisor: IndexAdvisor;
 
   constructor(
     configManager: ConfigManager,
@@ -38,6 +40,7 @@ export class CommandHandler {
     this.bookmarkManager = new BookmarkManager();
     this.queryOptimizer = new QueryOptimizer();
     this.nl2sqlConverter = new NL2SQLConverter();
+    this.indexAdvisor = new IndexAdvisor();
   }
 
   /**
@@ -81,6 +84,7 @@ export class CommandHandler {
       opt: () => this.handleOptimize(args),
       nl2sql: () => this.handleNL2SQL(args),
       nl: () => this.handleNL2SQL(args),
+      'suggest-index': () => this.handleSuggestIndex(args),
     };
 
     const handler = handlers[cmd];
@@ -1264,4 +1268,74 @@ SQL 执行:
 
 `, 'output');
   }
+
+  /**
+   * /suggest-index 命令 - 自动索引建议
+   */
+  private async handleSuggestIndex(args: string[]): Promise<void> {
+    if (args.length === 0) {
+      this.showSuggestIndexHelp();
+      return;
+    }
+
+    const sql = args.join(' ');
+
+    try {
+      // 分析 SQL 并生成索引建议
+      const analysis = await this.indexAdvisor.analyze(sql);
+
+      // 格式化输出
+      const output = this.indexAdvisor.formatSuggestions(analysis);
+      this.addOutput(output, 'output');
+
+      // 如果有高优先级建议，添加执行提示
+      const highPrioritySuggestions = analysis.suggestions.filter(s => s.priority === 'high');
+      if (highPrioritySuggestions.length > 0) {
+        this.addOutput('\n💡 提示：执行以下语句创建索引：', 'dim');
+        highPrioritySuggestions.forEach(s => {
+          this.addOutput(`   ${s.createStatement}`, 'command');
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.addOutput(`❌ 索引建议生成失败：${errorMessage}`, 'error');
+    }
+  }
+
+  /**
+   * 显示索引建议帮助
+   */
+  private showSuggestIndexHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  💡 自动索引建议 - v0.6.0                                ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /suggest-index <SQL 语句>    分析查询并建议索引
+
+示例：
+  /suggest-index SELECT * FROM users WHERE email = 'test@example.com'
+  /suggest-index SELECT * FROM orders WHERE user_id = 1 AND status = 'pending'
+  /suggest-index SELECT * FROM users ORDER BY created_at DESC
+
+建议类型：
+  - 单列索引：针对 WHERE/ORDER BY 中的单个列
+  - 复合索引：针对多个过滤条件的组合
+  - 覆盖索引：包含查询所需的所有列（规划中）
+
+输出内容：
+  - 索引名称和类型
+  - 建议的列
+  - 创建索引的 SQL 语句
+  - 预估性能提升
+
+注意：
+  - 建议基于查询模式分析，实际效果因数据量而异
+  - 已存在的索引会自动过滤
+  - 高优先级建议（🔴）推荐优先创建
+
+`, 'output');
+  }
+
 }
