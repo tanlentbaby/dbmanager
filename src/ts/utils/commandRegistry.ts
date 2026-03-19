@@ -213,6 +213,13 @@ export class CommandRegistry {
       usage: '/fix-sql <SQL 语句>',
       category: 'sql',
     },
+    {
+      name: 'template',
+      aliases: [],
+      description: '查询模板管理（v0.6.0 新功能）',
+      usage: '/template <子命令> [参数]',
+      category: 'other',
+    },
   ];
 
   /**

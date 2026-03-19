@@ -13,6 +13,7 @@ import { QueryOptimizer } from '../utils/queryOptimizer.js';
 import { NL2SQLConverter } from '../utils/nl2sql.js';
 import { IndexAdvisor } from '../utils/indexAdvisor.js';
 import { SqlAutoFixer } from '../utils/sqlAutoFixer.js';
+import { TemplateManager } from '../utils/templateManager.js';
 
 type OutputStyle = 'output' | 'error' | 'success' | 'warning' | 'dim' | 'bold' | 'command';
 type AddOutputFn = (text: string, style?: OutputStyle) => void;
@@ -28,6 +29,7 @@ export class CommandHandler {
   private nl2sqlConverter: NL2SQLConverter;
   private indexAdvisor: IndexAdvisor;
   private sqlAutoFixer: SqlAutoFixer;
+  private templateManager: TemplateManager;
 
   constructor(
     configManager: ConfigManager,
@@ -44,6 +46,7 @@ export class CommandHandler {
     this.nl2sqlConverter = new NL2SQLConverter();
     this.indexAdvisor = new IndexAdvisor();
     this.sqlAutoFixer = new SqlAutoFixer();
+    this.templateManager = new TemplateManager();
   }
 
   /**
@@ -89,6 +92,7 @@ export class CommandHandler {
       nl: () => this.handleNL2SQL(args),
       'suggest-index': () => this.handleSuggestIndex(args),
       'fix-sql': () => this.handleFixSql(args),
+      template: () => this.handleTemplate(args),
     };
 
     const handler = handlers[cmd];
@@ -1407,6 +1411,246 @@ SQL 执行:
   - 修复建议带有置信度评分
   - 高置信度（>80%）建议可直接应用
   - 复杂错误可能需要手动修正
+
+`, 'output');
+  }
+
+  /**
+   * /template 命令 - 查询模板管理
+   */
+  private handleTemplate(args: string[]): void {
+    if (args.length === 0) {
+      this.showTemplateHelp();
+      return;
+    }
+
+    const subcommand = args[0].toLowerCase();
+    const params = args.slice(1);
+
+    switch (subcommand) {
+      case 'list':
+      case 'ls':
+        this.handleTemplateList(params);
+        break;
+      case 'search':
+      case 'find':
+        this.handleTemplateSearch(params);
+        break;
+      case 'apply':
+      case 'run':
+        this.handleTemplateApply(params);
+        break;
+      case 'add':
+        this.handleTemplateAdd(params);
+        break;
+      case 'export':
+        this.handleTemplateExport(params);
+        break;
+      case 'import':
+        this.handleTemplateImport(params);
+        break;
+      case 'stats':
+        this.handleTemplateStats();
+        break;
+      case 'categories':
+      case 'cats':
+        this.handleTemplateCategories();
+        break;
+      case 'tags':
+        this.handleTemplateTags();
+        break;
+      default:
+        this.showTemplateHelp();
+    }
+  }
+
+  private handleTemplateList(params: string[]): void {
+    const category = params[0] || undefined;
+    const tag = params[1] || undefined;
+    
+    const templates = this.templateManager.listTemplates(category, tag);
+    const output = this.templateManager.formatTemplateList(templates);
+    
+    this.addOutput(`📋 模板列表:\n\n${output}`, 'output');
+  }
+
+  private handleTemplateSearch(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供搜索关键词', 'error');
+      return;
+    }
+    
+    const query = params.join(' ');
+    const templates = this.templateManager.searchTemplates(query);
+    const output = this.templateManager.formatSearchResults(query, templates);
+    
+    this.addOutput(output, 'output');
+  }
+
+  private handleTemplateApply(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供模板 ID 或名称', 'error');
+      return;
+    }
+
+    const templateIdOrName = params[0];
+    const variables: Record<string, string> = {};
+    
+    // 解析变量（格式：key=value）
+    for (const param of params.slice(1)) {
+      const [key, ...valueParts] = param.split('=');
+      if (key && valueParts.length > 0) {
+        variables[key] = valueParts.join('=');
+      }
+    }
+
+    // 尝试通过 ID 或名称查找模板
+    let template = this.templateManager.getTemplate(templateIdOrName);
+    if (!template) {
+      const searchResults = this.templateManager.searchTemplates(templateIdOrName);
+      if (searchResults.length > 0) {
+        template = searchResults[0];
+      }
+    }
+
+    if (!template) {
+      this.addOutput(`❌ 未找到模板 "${templateIdOrName}"`, 'error');
+      return;
+    }
+
+    const sql = this.templateManager.applyTemplate(template.id, Object.keys(variables).length > 0 ? variables : undefined);
+    if (sql) {
+      this.addOutput(`✅ 应用模板 "${template.name}":\n\n${sql}`, 'success');
+      
+      // 如果有未替换的变量，提示用户
+      if (sql.includes('{{')) {
+        const missingVars = sql.match(/\{\{(\w+)\}\}/g)?.map(v => v.replace(/[{}]/g, ''));
+        if (missingVars && missingVars.length > 0) {
+          this.addOutput(`\n⚠️ 还有未替换的变量：${missingVars.join(', ')}`, 'warning');
+          this.addOutput(`💡 使用方式：/template apply ${template.id} ${missingVars.map(v => `${v}=值`).join(' ')}`, 'dim');
+        }
+      }
+    }
+  }
+
+  private handleTemplateAdd(params: string[]): void {
+    this.addOutput(`
+📝 添加模板（交互模式待实现）
+
+当前支持快速添加：
+/template add <名称> <分类> <SQL>
+
+示例：
+/template add "我的查询" basic "SELECT * FROM users"
+
+完整功能（带变量、标签）将在后续版本实现。
+`, 'output');
+  }
+
+  private handleTemplateExport(params: string[]): void {
+    const json = this.templateManager.exportTemplates(params.length > 0 ? params : undefined);
+    this.addOutput(`📤 导出模板:\n\n\`\`\`json\n${json}\n\`\`\``, 'output');
+    this.addOutput('\n💡 提示：将以上内容保存到 .json 文件', 'dim');
+  }
+
+  private handleTemplateImport(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供 JSON 文件路径或 JSON 内容', 'error');
+      return;
+    }
+    
+    // 简化版本：直接解析参数作为 JSON
+    const jsonStr = params.join(' ');
+    try {
+      const result = this.templateManager.importTemplates(jsonStr);
+      
+      let output = `📥 导入完成:\n`;
+      output += `✅ 成功：${result.success}\n`;
+      output += `❌ 失败：${result.failed}\n`;
+      
+      if (result.errors.length > 0) {
+        output += `\n错误:\n`;
+        for (const error of result.errors) {
+          output += `  - ${error}\n`;
+        }
+      }
+      
+      this.addOutput(output, result.failed === 0 ? 'success' : 'warning');
+    } catch (error) {
+      this.addOutput(`❌ 导入失败：${error instanceof Error ? error.message : String(error)}`, 'error');
+    }
+  }
+
+  private handleTemplateStats(): void {
+    const output = this.templateManager.formatStats();
+    this.addOutput(output, 'output');
+  }
+
+  private handleTemplateCategories(): void {
+    const categories = this.templateManager.getCategories();
+    const lines = ['📂 模板分类:\n'];
+    
+    for (const cat of categories) {
+      const count = this.templateManager.listTemplates(cat.id).length;
+      lines.push(`${cat.icon} **${cat.name}** - ${cat.description}`);
+      lines.push(`   模板数：${count}\n`);
+    }
+    
+    this.addOutput(lines.join('\n'), 'output');
+  }
+
+  private handleTemplateTags(): void {
+    const tags = this.templateManager.getTags();
+    const lines = ['🏷️ 模板标签:\n'];
+    
+    for (const tag of tags) {
+      const count = this.templateManager.listTemplates(undefined, tag).length;
+      lines.push(`  - ${tag} (${count})`);
+    }
+    
+    this.addOutput(lines.join('\n'), 'output');
+  }
+
+  /**
+   * 显示模板帮助
+   */
+  private showTemplateHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  📦 查询模板市场 - v0.6.0                                ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /template list [分类] [标签]     列出模板
+  /template search <关键词>        搜索模板
+  /template apply <模板> [变量...] 应用模板
+  /template add <名称> <分类> <SQL> 添加模板
+  /template export [ID...]         导出模板
+  /template import <JSON>          导入模板
+  /template stats                  查看统计
+  /template categories             查看分类
+  /template tags                   查看标签
+
+快捷命令：
+  /template ls       列出所有模板
+  /template cats     查看分类
+  /template run      同 apply
+
+示例：
+  /template list crud
+  /template search 用户
+  /template apply crud_select_by_id table=users id=1
+  /template export
+  /template categories
+
+内置分类：
+  📝 crud - CRUD 操作
+  📊 statistics - 统计分析
+  📄 pagination - 分页查询
+  ⏰ time - 时间查询
+  🔗 join - 连接查询
+  🔍 search - 搜索查询
+  📋 basic - 基础查询
 
 `, 'output');
   }
