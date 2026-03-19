@@ -143,11 +143,13 @@ export class IndexAdvisor {
     
     if (whereMatch) {
       const whereClause = whereMatch[1];
+      // 移除字符串值避免误识别
+      const cleanedClause = whereClause.replace(/'[^']*'|"[^"]*"/g, '');
       // 匹配列名 = 值、列名 > 值等模式
-      const colMatches = whereClause.matchAll(/([a-zA-Z_][a-zA-Z0-9_.]*)\s*(?:=|>|<|>=|<=|<>|!=|LIKE|IN|BETWEEN)/gi);
+      const colMatches = cleanedClause.matchAll(/([a-zA-Z_][a-zA-Z0-9_.]*)\s*(?:=|>|<|>=|<=|<>|!=|LIKE|IN|BETWEEN)/gi);
       for (const match of colMatches) {
         const col = match[1].split('.').pop() || match[1];
-        if (!this.isKeyword(col)) {
+        if (!this.isKeyword(col) && !/^\d+$/.test(col)) {
           columns.push(col);
         }
       }
