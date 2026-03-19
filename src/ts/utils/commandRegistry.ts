@@ -220,6 +220,13 @@ export class CommandRegistry {
       usage: '/template <子命令> [参数]',
       category: 'other',
     },
+    {
+      name: 'cloud',
+      aliases: [],
+      description: '云端书签同步（v0.6.0 新功能）',
+      usage: '/cloud <子命令> [参数]',
+      category: 'other',
+    },
   ];
 
   /**

@@ -14,6 +14,7 @@ import { NL2SQLConverter } from '../utils/nl2sql.js';
 import { IndexAdvisor } from '../utils/indexAdvisor.js';
 import { SqlAutoFixer } from '../utils/sqlAutoFixer.js';
 import { TemplateManager } from '../utils/templateManager.js';
+import { CloudSyncManager } from '../utils/cloudSync.js';
 
 type OutputStyle = 'output' | 'error' | 'success' | 'warning' | 'dim' | 'bold' | 'command';
 type AddOutputFn = (text: string, style?: OutputStyle) => void;
@@ -30,6 +31,7 @@ export class CommandHandler {
   private indexAdvisor: IndexAdvisor;
   private sqlAutoFixer: SqlAutoFixer;
   private templateManager: TemplateManager;
+  private cloudSyncManager: CloudSyncManager;
 
   constructor(
     configManager: ConfigManager,
@@ -47,6 +49,7 @@ export class CommandHandler {
     this.indexAdvisor = new IndexAdvisor();
     this.sqlAutoFixer = new SqlAutoFixer();
     this.templateManager = new TemplateManager();
+    this.cloudSyncManager = new CloudSyncManager();
   }
 
   /**
@@ -93,6 +96,7 @@ export class CommandHandler {
       'suggest-index': () => this.handleSuggestIndex(args),
       'fix-sql': () => this.handleFixSql(args),
       template: () => this.handleTemplate(args),
+      cloud: () => this.handleCloud(args),
     };
 
     const handler = handlers[cmd];
@@ -1651,6 +1655,164 @@ SQL 执行:
   🔗 join - 连接查询
   🔍 search - 搜索查询
   📋 basic - 基础查询
+
+`, 'output');
+  }
+
+  /**
+   * /cloud 命令 - 云端书签同步
+   */
+  private handleCloud(args: string[]): void {
+    if (args.length === 0) {
+      this.showCloudHelp();
+      return;
+    }
+
+    const subcommand = args[0].toLowerCase();
+    const params = args.slice(1);
+
+    switch (subcommand) {
+      case 'login':
+        this.handleCloudLogin(params);
+        break;
+      case 'logout':
+        this.handleCloudLogout();
+        break;
+      case 'status':
+        this.handleCloudStatus();
+        break;
+      case 'sync':
+        this.handleCloudSync(params);
+        break;
+      case 'upload':
+        this.handleCloudUpload();
+        break;
+      case 'download':
+        this.handleCloudDownload();
+        break;
+      case 'history':
+        this.handleCloudHistory(params);
+        break;
+      default:
+        this.showCloudHelp();
+    }
+  }
+
+  private handleCloudLogin(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供邮箱地址', 'error');
+      return;
+    }
+
+    const email = params[0];
+    const result = this.cloudSyncManager.login(email);
+
+    if (result.success && result.user) {
+      this.addOutput(`✅ 登录成功!\n\n用户：${result.user.name}\n邮箱：${result.user.email}\n计划：${result.user.plan}`, 'success');
+    } else {
+      this.addOutput(`❌ 登录失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleCloudLogout(): void {
+    this.cloudSyncManager.logout();
+    this.addOutput('✅ 已登出', 'success');
+  }
+
+  private handleCloudStatus(): void {
+    // 模拟本地书签
+    const mockBookmarks: any[] = [];
+    const status = this.cloudSyncManager.getSyncStatus(mockBookmarks);
+    const output = this.cloudSyncManager.formatSyncStatus(status);
+    this.addOutput(`☁️ 云端同步状态:\n\n${output}`, 'output');
+  }
+
+  private handleCloudSync(params: string[]): void {
+    if (!this.cloudSyncManager.checkConnection()) {
+      this.addOutput('❌ 未连接到云端，请先登录：/cloud login <邮箱>', 'error');
+      return;
+    }
+
+    // 模拟同步
+    const mockBookmarks: any[] = [];
+    const result = this.cloudSyncManager.sync(mockBookmarks);
+
+    if (result.success) {
+      this.addOutput(`✅ 同步完成!\n\n合并：${result.merged.length} 个书签\n冲突：${result.conflicts.length} 个`, 'success');
+      
+      if (result.conflicts.length > 0) {
+        this.addOutput(`\n⚠️ 发现 ${result.conflicts.length} 个冲突，请手动解决`, 'warning');
+      }
+    } else {
+      this.addOutput(`❌ 同步失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleCloudUpload(): void {
+    if (!this.cloudSyncManager.checkConnection()) {
+      this.addOutput('❌ 未连接到云端', 'error');
+      return;
+    }
+
+    const mockBookmarks: any[] = [];
+    const result = this.cloudSyncManager.uploadBookmarks(mockBookmarks);
+
+    if (result.success) {
+      this.addOutput(`✅ 上传成功：${result.uploaded} 个书签`, 'success');
+    } else {
+      this.addOutput(`❌ 上传失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleCloudDownload(): void {
+    if (!this.cloudSyncManager.checkConnection()) {
+      this.addOutput('❌ 未连接到云端', 'error');
+      return;
+    }
+
+    const result = this.cloudSyncManager.downloadBookmarks();
+
+    if (result.success) {
+      this.addOutput(`✅ 下载成功：${result.bookmarks.length} 个书签`, 'success');
+    } else {
+      this.addOutput(`❌ 下载失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleCloudHistory(params: string[]): void {
+    const limit = parseInt(params[0]) || 10;
+    const history = this.cloudSyncManager.getSyncHistory(limit);
+    const output = this.cloudSyncManager.formatSyncHistory(history);
+    this.addOutput(`📜 同步历史:\n\n${output}`, 'output');
+  }
+
+  /**
+   * 显示云端帮助
+   */
+  private showCloudHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  ☁️ 云端书签同步 - v0.6.0                                ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /cloud login <邮箱>          登录云端账户
+  /cloud logout                登出
+  /cloud status                查看同步状态
+  /cloud sync                  双向同步
+  /cloud upload                上传书签
+  /cloud download              下载书签
+  /cloud history [数量]        查看同步历史
+
+功能：
+  - 本地书签云端备份
+  - 多设备同步
+  - 冲突检测与解决
+  - 同步历史记录
+
+注意：
+  - 当前版本为本地模拟实现
+  - v0.7.0 将集成真实云端服务
 
 `, 'output');
   }
