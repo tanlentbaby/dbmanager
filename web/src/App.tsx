@@ -8,6 +8,7 @@ import History from './pages/History'
 import Settings from './pages/Settings'
 import ERD from './pages/ERD'
 import Favorites from './pages/Favorites'
+import DataCompare from './pages/DataCompare'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="databases" element={<Databases />} />
         <Route path="query" element={<Query />} />
         <Route path="erd" element={<ERD />} />
+        <Route path="compare" element={<DataCompare />} />
         <Route path="bookmarks" element={<Bookmarks />} />
         <Route path="history" element={<History />} />
         <Route path="favorites" element={<Favorites />} />
