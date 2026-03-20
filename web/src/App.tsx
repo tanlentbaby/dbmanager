@@ -17,6 +17,7 @@ import ScheduledTasks from './pages/ScheduledTasks'
 import ParallelSync from './pages/ParallelSync'
 import AIAssistant from './pages/AIAssistant'
 import ModelManagement from './pages/ModelManagement'
+import PluginMarket from './pages/PluginMarket'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="query" element={<Query />} />
         <Route path="ai" element={<AIAssistant />} />
         <Route path="models" element={<ModelManagement />} />
+        <Route path="plugins" element={<PluginMarket />} />
         <Route path="erd" element={<ERD />} />
         <Route path="compare" element={<DataCompare />} />
         <Route path="sync" element={<SchemaSync />} />
