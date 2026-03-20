@@ -19,6 +19,8 @@ export type RootStackParamList = {
   History: undefined;
   Settings: undefined;
   DatabaseConnect: undefined;
+  AI: undefined;
+  Plugins: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -76,6 +78,11 @@ export default function AppNavigator() {
         name="Plugins" 
         component={PluginsScreen} 
         options={{ title: '插件市场' }}
+      />
+    </Stack.Navigator>
+  );
+}
+: '插件市场' }}
       />
     </Stack.Navigator>
   );
