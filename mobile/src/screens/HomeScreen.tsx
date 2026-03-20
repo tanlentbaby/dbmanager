@@ -54,6 +54,13 @@ export default function HomeScreen() {
       screen: 'DatabaseConnect',
     },
     {
+      id: 'plugins',
+      title: '插件',
+      icon: '🔌',
+      description: '插件市场和管理',
+      screen: 'Plugins',
+    },
+    {
       id: 'settings',
       title: '设置',
       icon: '⚙️',

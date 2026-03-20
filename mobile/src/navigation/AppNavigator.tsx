@@ -72,6 +72,11 @@ export default function AppNavigator() {
         component={AIScreen} 
         options={{ title: 'AI 助手' }}
       />
+      <Stack.Screen 
+        name="Plugins" 
+        component={PluginsScreen} 
+        options={{ title: '插件市场' }}
+      />
     </Stack.Navigator>
   );
 }

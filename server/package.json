@@ -1,0 +1,22 @@
+{
+  "name": "dbmanager-server",
+  "version": "0.9.0",
+  "description": "DBManager REST API Server",
+  "main": "dist/api.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/api.js",
+    "dev": "ts-node src/api.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/cors": "^2.8.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.0.0"
+  }
+}
