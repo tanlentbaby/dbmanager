@@ -1699,6 +1699,16 @@ SQL 执行:
   }
 
   private handleCloudLogin(params: string[]): void {
+    // 检查 --feishu 参数
+    const feishuIndex = params.findIndex(p => p === '--feishu');
+    
+    if (feishuIndex >= 0) {
+      // Feishu 登录模式
+      this.handleFeishuLogin(params);
+      return;
+    }
+
+    // 本地模拟模式
     if (params.length === 0) {
       this.addOutput('❌ 请提供邮箱地址', 'error');
       return;
@@ -1711,6 +1721,54 @@ SQL 执行:
       this.addOutput(`✅ 登录成功!\n\n用户：${result.user.name}\n邮箱：${result.user.email}\n计划：${result.user.plan}`, 'success');
     } else {
       this.addOutput(`❌ 登录失败：${result.error}`, 'error');
+    }
+  }
+
+  private async handleFeishuLogin(params: string[]): Promise<void> {
+    // 检查是否有 --code 参数（授权码回调）
+    const codeIndex = params.findIndex(p => p.startsWith('--code='));
+    
+    if (codeIndex >= 0) {
+      // 已有授权码，直接登录
+      const code = params[codeIndex].substring('--code='.length);
+      
+      try {
+        const result = await this.cloudSyncManager.loginFeishu(code);
+        
+        if (result.success && result.user) {
+          this.addOutput(`✅ Feishu 登录成功!\n\n用户：${result.user.name}\nID: ${result.user.id}`, 'success');
+        } else {
+          this.addOutput(`❌ Feishu 登录失败：${result.error}`, 'error');
+        }
+      } catch (error) {
+        this.addOutput(`❌ Feishu 登录失败：${error instanceof Error ? error.message : String(error)}`, 'error');
+      }
+      return;
+    }
+
+    // 获取授权 URL
+    try {
+      const authUrl = this.cloudSyncManager.getFeishuAuthUrl();
+      
+      this.addOutput(`
+🔐 Feishu 登录
+
+请按以下步骤完成登录：
+
+1. 在浏览器中打开以下 URL:
+   ${authUrl}
+
+2. 授权 DBManager 访问您的 Feishu 云文档
+
+3. 复制回调 URL 中的 code 参数
+
+4. 使用以下命令完成登录:
+   /cloud login --feishu --code=YOUR_CODE
+
+或者直接在浏览器授权后访问回调地址，系统会自动处理。
+`, 'output');
+    } catch (error) {
+      this.addOutput(`❌ 获取授权 URL 失败：${error instanceof Error ? error.message : String(error)}\n\n💡 请确保已在配置中设置 Feishu App ID 和 Secret`, 'error');
     }
   }
 
@@ -1792,27 +1850,41 @@ SQL 执行:
   private showCloudHelp(): void {
     this.addOutput(`
 ╔══════════════════════════════════════════════════════════╗
-║  ☁️ 云端书签同步 - v0.6.0                                ║
+║  ☁️ 云端书签同步 - v0.7.0                                ║
 ╚══════════════════════════════════════════════════════════╝
 
 用法：
-  /cloud login <邮箱>          登录云端账户
-  /cloud logout                登出
-  /cloud status                查看同步状态
-  /cloud sync                  双向同步
-  /cloud upload                上传书签
-  /cloud download              下载书签
-  /cloud history [数量]        查看同步历史
+  /cloud login <邮箱>              登录（本地模拟模式）
+  /cloud login --feishu            Feishu 云文档登录
+  /cloud login --feishu --code=X   Feishu 授权码登录
+  /cloud logout                    登出
+  /cloud status                    查看同步状态
+  /cloud sync                      双向同步
+  /cloud upload                    上传书签
+  /cloud download                  下载书签
+  /cloud history [数量]            查看同步历史
+  /cloud share <书签> <用户>       分享书签
 
 功能：
-  - 本地书签云端备份
-  - 多设备同步
-  - 冲突检测与解决
-  - 同步历史记录
+  - 📦 本地书签云端备份
+  - 🔄 多设备实时同步
+  - ⚡ 冲突检测与解决
+  - 📜 同步历史记录
+  - 👥 书签共享协作
 
-注意：
-  - 当前版本为本地模拟实现
-  - v0.7.0 将集成真实云端服务
+支持平台：
+  - 本地模拟（开发测试）
+  - Feishu 云文档 ✅
+
+配置 Feishu:
+  在 ~/.dbmanager/config.json 中添加:
+  {
+    "feishu": {
+      "appId": "cli_xxx",
+      "appSecret": "xxx",
+      "redirectUri": "http://localhost:3000/callback"
+    }
+  }
 
 `, 'output');
   }

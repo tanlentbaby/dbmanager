@@ -1,17 +1,19 @@
 /**
  * 云端书签同步管理器
  * v0.6.0 新功能 - 协作共享
+ * v0.7.0 增强 - Feishu 真实云端集成
  * 
  * 功能：
  * - 本地书签持久化
- * - 云端同步（文件同步方案）
+ * - 云端同步（Feishu 云文档 / 本地模拟）
  * - 冲突检测与解决
  * - 同步历史记录
- * - 登录认证（简化版）
+ * - 登录认证（Feishu OAuth 2.0 / 本地模拟）
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { FeishuCloudManager, FeishuBookmark, FeishuConfig } from './feishuCloud.js';
 
 export interface CloudBookmark {
   id: string;
@@ -50,15 +52,25 @@ export interface UserProfile {
   plan: 'free' | 'pro' | 'team';
 }
 
+export type CloudProvider = 'local' | 'feishu';
+
+export interface CloudSyncConfig {
+  provider: CloudProvider;
+  feishuConfig?: FeishuConfig;
+  storageDir?: string;
+}
+
 export class CloudSyncManager {
   private readonly storagePath: string;
   private readonly syncHistoryPath: string;
   private currentUser: UserProfile | null = null;
   private isConnected: boolean = false;
+  private provider: CloudProvider = 'local';
+  private feishuManager?: FeishuCloudManager;
 
-  constructor(storageDir?: string) {
+  constructor(config?: CloudSyncConfig) {
     const defaultDir = path.join(process.env.HOME || '~', '.dbmanager', 'cloud');
-    const dir = storageDir || defaultDir;
+    const dir = config?.storageDir || defaultDir;
     
     this.storagePath = path.join(dir, 'bookmarks.json');
     this.syncHistoryPath = path.join(dir, 'sync_history.json');
@@ -68,13 +80,49 @@ export class CloudSyncManager {
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
+
+    // 配置提供商
+    this.provider = config?.provider || 'local';
+    
+    if (this.provider === 'feishu' && config?.feishuConfig) {
+      this.feishuManager = new FeishuCloudManager();
+      this.feishuManager.configure(config.feishuConfig);
+      
+      // 尝试加载已保存的 tokens
+      const savedTokens = this.feishuManager.loadTokens();
+      if (savedTokens) {
+        this.feishuManager.saveTokens(savedTokens);
+      }
+    }
   }
 
   /**
-   * 登录（简化版 - 本地模拟）
+   * 登录（支持本地模拟和 Feishu 真实登录）
    */
   login(email: string, token?: string): { success: boolean; user?: UserProfile; error?: string } {
-    // 简化实现：任何邮箱都登录成功
+    if (this.provider === 'feishu') {
+      // Feishu 模式：需要授权码
+      if (!token) {
+        return { 
+          success: false, 
+          error: 'Feishu 登录需要授权码，请使用 /cloud login --feishu 获取授权 URL' 
+        };
+      }
+
+      if (!this.feishuManager) {
+        return { success: false, error: 'Feishu 未配置' };
+      }
+
+      // 使用授权码登录
+      // 注意：这里需要异步处理，但为了保持接口兼容，我们返回一个特殊标记
+      // 实际使用时应该用 loginFeishu 方法
+      return { 
+        success: false, 
+        error: '请使用 /cloud login --feishu 命令进行 Feishu 登录' 
+      };
+    }
+
+    // 本地模拟模式
     if (!email || !email.includes('@')) {
       return { success: false, error: '无效的邮箱地址' };
     }
@@ -93,9 +141,52 @@ export class CloudSyncManager {
   }
 
   /**
+   * Feishu 登录（异步）
+   */
+  async loginFeishu(code: string): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
+    if (!this.feishuManager) {
+      return { success: false, error: 'Feishu 未配置' };
+    }
+
+    const result = await this.feishuManager.loginWithCode(code);
+    
+    if (result.success && result.user) {
+      this.currentUser = {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        plan: 'free',
+      };
+      this.isConnected = true;
+      this.recordSync('upload', 0, true);
+      
+      // 返回转换后的用户对象
+      return { 
+        success: true, 
+        user: this.currentUser 
+      };
+    }
+
+    return { success: false, error: result.error };
+  }
+
+  /**
+   * 获取 Feishu 授权 URL
+   */
+  getFeishuAuthUrl(): string {
+    if (!this.feishuManager) {
+      throw new Error('Feishu 未配置');
+    }
+    return this.feishuManager.getAuthUrl();
+  }
+
+  /**
    * 登出
    */
   logout(): void {
+    if (this.feishuManager) {
+      this.feishuManager.logout();
+    }
     this.currentUser = null;
     this.isConnected = false;
   }
@@ -111,19 +202,34 @@ export class CloudSyncManager {
    * 检查连接状态
    */
   checkConnection(): boolean {
+    if (this.provider === 'feishu') {
+      return this.feishuManager?.isLoggedIn() || false;
+    }
     return this.isConnected && this.currentUser !== null;
   }
 
   /**
-   * 上传书签到云端
+   * 获取当前提供商
+   */
+  getProvider(): CloudProvider {
+    return this.provider;
+  }
+
+  /**
+   * 上传书签到云端（同步方法，用于本地模式）
    */
   uploadBookmarks(bookmarks: CloudBookmark[]): { success: boolean; uploaded: number; error?: string } {
     if (!this.isConnected) {
       return { success: false, uploaded: 0, error: '未连接到云端' };
     }
 
+    if (this.provider === 'feishu') {
+      // Feishu 模式需要使用异步方法
+      return { success: false, uploaded: 0, error: 'Feishu 模式请使用 uploadBookmarksAsync' };
+    }
+
     try {
-      // 模拟上传：保存到本地文件作为"云端存储"
+      // 本地模式：保存到本地文件作为"云端存储"
       const existing = this.loadRemoteBookmarks();
       
       let uploaded = 0;
@@ -131,14 +237,12 @@ export class CloudSyncManager {
         const existingIndex = existing.findIndex(b => b.id === bookmark.id);
         
         if (existingIndex >= 0) {
-          // 更新
           existing[existingIndex] = {
             ...bookmark,
             remoteVersion: (existing[existingIndex].remoteVersion || 0) + 1,
             syncStatus: 'synced',
           };
         } else {
-          // 新增
           existing.push({
             ...bookmark,
             remoteVersion: 1,
@@ -242,6 +346,163 @@ export class CloudSyncManager {
       this.recordSync('merge', 0, false, errorMessage);
       return { success: false, merged: [], conflicts: [], error: errorMessage };
     }
+  }
+
+  /**
+   * 上传书签到云端（异步，支持 Feishu）
+   */
+  async uploadBookmarksAsync(bookmarks: CloudBookmark[]): Promise<{ success: boolean; uploaded: number; error?: string }> {
+    if (!this.isConnected) {
+      return { success: false, uploaded: 0, error: '未连接到云端' };
+    }
+
+    if (this.provider === 'feishu') {
+      if (!this.feishuManager) {
+        return { success: false, uploaded: 0, error: 'Feishu 未配置' };
+      }
+
+      // 转换为 Feishu 格式
+      const feishuBookmarks: FeishuBookmark[] = bookmarks.map(b => ({
+        id: b.id,
+        name: b.name,
+        sql: b.sql,
+        description: b.description,
+        tags: b.tags,
+        databaseType: b.databaseType,
+        createdAt: new Date(b.createdAt).getTime(),
+        updatedAt: new Date(b.updatedAt).getTime(),
+        version: b.remoteVersion || b.localVersion,
+      }));
+
+      const result = await this.feishuManager.uploadBookmarks(feishuBookmarks);
+      
+      if (result.success) {
+        this.recordSync('upload', result.uploaded, true);
+      } else {
+        this.recordSync('upload', 0, false, result.error);
+      }
+
+      return result;
+    }
+
+    // 本地模式：使用同步方法
+    return this.uploadBookmarks(bookmarks);
+  }
+
+  /**
+   * 从云端下载书签（异步，支持 Feishu）
+   */
+  async downloadBookmarksAsync(): Promise<{ success: boolean; bookmarks: CloudBookmark[]; error?: string }> {
+    if (!this.isConnected) {
+      return { success: false, bookmarks: [], error: '未连接到云端' };
+    }
+
+    if (this.provider === 'feishu') {
+      if (!this.feishuManager) {
+        return { success: false, bookmarks: [], error: 'Feishu 未配置' };
+      }
+
+      const result = await this.feishuManager.downloadBookmarks();
+      
+      if (result.success) {
+        // 转换为本地格式
+        const bookmarks: CloudBookmark[] = result.bookmarks.map(b => ({
+          id: b.id,
+          name: b.name,
+          sql: b.sql,
+          description: b.description,
+          tags: b.tags,
+          databaseType: b.databaseType,
+          createdAt: new Date(b.createdAt).toISOString(),
+          updatedAt: new Date(b.updatedAt).toISOString(),
+          syncStatus: 'synced' as const,
+          remoteVersion: b.version,
+          localVersion: b.version,
+        }));
+
+        this.recordSync('download', bookmarks.length, true);
+        return { success: true, bookmarks };
+      } else {
+        this.recordSync('download', 0, false, result.error);
+        return { success: false, bookmarks: [], error: result.error };
+      }
+    }
+
+    // 本地模式：使用同步方法
+    return Promise.resolve(this.downloadBookmarks());
+  }
+
+  /**
+   * 同步（异步，支持 Feishu）
+   */
+  async syncAsync(localBookmarks: CloudBookmark[]): Promise<{ 
+    success: boolean; 
+    merged: CloudBookmark[]; 
+    conflicts: CloudBookmark[];
+    error?: string 
+  }> {
+    if (!this.isConnected) {
+      return { success: false, merged: [], conflicts: [], error: '未连接到云端' };
+    }
+
+    if (this.provider === 'feishu') {
+      if (!this.feishuManager) {
+        return { success: false, merged: [], conflicts: [], error: 'Feishu 未配置' };
+      }
+
+      const result = await this.feishuManager.sync(
+        localBookmarks.map(b => ({
+          id: b.id,
+          name: b.name,
+          sql: b.sql,
+          description: b.description,
+          tags: b.tags,
+          databaseType: b.databaseType,
+          createdAt: new Date(b.createdAt).getTime(),
+          updatedAt: new Date(b.updatedAt).getTime(),
+          version: b.remoteVersion || b.localVersion,
+        }))
+      );
+
+      if (result.success) {
+        const merged: CloudBookmark[] = result.merged.map(b => ({
+          id: b.id,
+          name: b.name,
+          sql: b.sql,
+          description: b.description,
+          tags: b.tags,
+          databaseType: b.databaseType,
+          createdAt: new Date(b.createdAt).toISOString(),
+          updatedAt: new Date(b.updatedAt).toISOString(),
+          syncStatus: 'synced' as const,
+          remoteVersion: b.version,
+          localVersion: b.version,
+        }));
+
+        const conflicts: CloudBookmark[] = result.conflicts.map(b => ({
+          id: b.id,
+          name: b.name,
+          sql: b.sql,
+          description: b.description,
+          tags: b.tags,
+          databaseType: b.databaseType,
+          createdAt: new Date(b.createdAt).toISOString(),
+          updatedAt: new Date(b.updatedAt).toISOString(),
+          syncStatus: 'conflict' as const,
+          remoteVersion: b.version,
+          localVersion: b.version,
+        }));
+
+        this.recordSync('merge', merged.length, true);
+        return { success: true, merged, conflicts };
+      } else {
+        this.recordSync('merge', 0, false, result.error);
+        return { success: false, merged: [], conflicts: [], error: result.error };
+      }
+    }
+
+    // 本地模式：使用同步方法
+    return Promise.resolve(this.sync(localBookmarks));
   }
 
   /**
