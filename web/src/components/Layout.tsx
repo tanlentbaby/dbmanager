@@ -7,6 +7,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { name: '仪表盘', href: '/', icon: '📊' },
+    { name: '数据库', href: '/databases', icon: '🔌' },
     { name: '查询', href: '/query', icon: '📝' },
     { name: '书签', href: '/bookmarks', icon: '🔖' },
     { name: '历史', href: '/history', icon: '📜' },
