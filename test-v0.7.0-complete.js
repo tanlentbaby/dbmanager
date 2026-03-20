@@ -154,14 +154,14 @@ test('Phase 4-1: 创建 TeamManager', () => {
 
 test('Phase 4-2: 创建团队', () => {
   const manager = new TeamManager();
-  const result = manager.createTeam('测试团队', 'test@example.com');
+  const result = manager.createTeam(`测试团队_${Date.now()}`, 'test@example.com');
   if (!result.success) throw new Error(result.error);
   if (!result.team) throw new Error('团队未创建');
 });
 
 test('Phase 4-3: 邀请成员', () => {
   const manager = new TeamManager();
-  const createResult = manager.createTeam('测试团队 2', 'owner@example.com');
+  const createResult = manager.createTeam(`测试团队 2_${Date.now()}`, 'owner@example.com');
   if (!createResult.team) throw new Error('创建团队失败');
   
   const inviteResult = manager.inviteMember(createResult.team.id, 'member@example.com', 'member');
@@ -170,7 +170,7 @@ test('Phase 4-3: 邀请成员', () => {
 
 test('Phase 4-4: 分享书签', () => {
   const manager = new TeamManager();
-  const createResult = manager.createTeam('测试团队 3', 'owner@example.com');
+  const createResult = manager.createTeam(`测试团队 3_${Date.now()}`, 'owner@example.com');
   if (!createResult.team) throw new Error('创建团队失败');
   
   const shareResult = manager.shareBookmark(
@@ -198,7 +198,7 @@ test('Phase 4-6: 获取团队列表', () => {
 
 test('Phase 4-7: 获取活动日志', () => {
   const manager = new TeamManager();
-  const createResult = manager.createTeam('测试团队 4', 'owner@example.com');
+  const createResult = manager.createTeam(`测试团队 4_${Date.now()}`, 'owner@example.com');
   if (!createResult.team) throw new Error('创建团队失败');
   
   const logs = manager.getActivityLogs(createResult.team.id, 10);
