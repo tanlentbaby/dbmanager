@@ -13,6 +13,8 @@ import SchemaSync from './pages/SchemaSync'
 import DataMigration from './pages/DataMigration'
 import IncrementalSync from './pages/IncrementalSync'
 import ResumableTransfer from './pages/ResumableTransfer'
+import ScheduledTasks from './pages/ScheduledTasks'
+import ParallelSync from './pages/ParallelSync'
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
         <Route path="migration" element={<DataMigration />} />
         <Route path="incremental" element={<IncrementalSync />} />
         <Route path="resumable" element={<ResumableTransfer />} />
+        <Route path="scheduled" element={<ScheduledTasks />} />
+        <Route path="parallel" element={<ParallelSync />} />
         <Route path="bookmarks" element={<Bookmarks />} />
         <Route path="history" element={<History />} />
         <Route path="favorites" element={<Favorites />} />

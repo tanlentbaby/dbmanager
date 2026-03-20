@@ -15,6 +15,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: '迁移', href: '/migration', icon: '📦' },
     { name: '增量', href: '/incremental', icon: '📈' },
     { name: '续传', href: '/resumable', icon: '⏯️' },
+    { name: '定时', href: '/scheduled', icon: '⏰' },
+    { name: '并行', href: '/parallel', icon: '⚡' },
     { name: '收藏', href: '/favorites', icon: '⭐' },
     { name: '书签', href: '/bookmarks', icon: '🔖' },
     { name: '历史', href: '/history', icon: '📜' },
