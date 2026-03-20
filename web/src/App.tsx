@@ -19,6 +19,7 @@ import AIAssistant from './pages/AIAssistant'
 import ModelManagement from './pages/ModelManagement'
 import PluginMarket from './pages/PluginMarket'
 import ThirdPartyPlugins from './pages/ThirdPartyPlugins'
+import PluginUpdates from './pages/PluginUpdates'
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="models" element={<ModelManagement />} />
         <Route path="plugins" element={<PluginMarket />} />
         <Route path="third-party" element={<ThirdPartyPlugins />} />
+        <Route path="updates" element={<PluginUpdates />} />
         <Route path="erd" element={<ERD />} />
         <Route path="compare" element={<DataCompare />} />
         <Route path="sync" element={<SchemaSync />} />
