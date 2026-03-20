@@ -67,6 +67,11 @@ export default function AppNavigator() {
         component={DatabaseConnectScreen} 
         options={{ title: '连接数据库' }}
       />
+      <Stack.Screen 
+        name="AI" 
+        component={AIScreen} 
+        options={{ title: 'AI 助手' }}
+      />
     </Stack.Navigator>
   );
 }

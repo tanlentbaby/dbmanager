@@ -26,6 +26,13 @@ export default function HomeScreen() {
       screen: 'Query',
     },
     {
+      id: 'ai',
+      title: 'AI 助手',
+      icon: '🤖',
+      description: '自然语言转 SQL/解释/优化',
+      screen: 'AI',
+    },
+    {
       id: 'bookmarks',
       title: '书签',
       icon: '🔖',
