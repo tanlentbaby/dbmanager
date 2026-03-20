@@ -11,6 +11,8 @@ import Favorites from './pages/Favorites'
 import DataCompare from './pages/DataCompare'
 import SchemaSync from './pages/SchemaSync'
 import DataMigration from './pages/DataMigration'
+import IncrementalSync from './pages/IncrementalSync'
+import ResumableTransfer from './pages/ResumableTransfer'
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
         <Route path="compare" element={<DataCompare />} />
         <Route path="sync" element={<SchemaSync />} />
         <Route path="migration" element={<DataMigration />} />
+        <Route path="incremental" element={<IncrementalSync />} />
+        <Route path="resumable" element={<ResumableTransfer />} />
         <Route path="bookmarks" element={<Bookmarks />} />
         <Route path="history" element={<History />} />
         <Route path="favorites" element={<Favorites />} />
