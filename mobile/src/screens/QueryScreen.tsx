@@ -167,38 +167,43 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
   },
-  input: {
-    fontSize: 14,
-    fontFamily: 'monospace',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  executeButton: {
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  executeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+  buttonRow: {
+    marginTop: 16,
   },
   resultScroll: {
     flex: 1,
   },
-  loadingContainer: {
+  resultContainer: {
+    margin: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  resultTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resultCount: {
+    fontSize: 13,
+  },
+  emptyContainer: {
+    margin: 16,
     padding: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingText: {
-    marginTop: 16,
+  emptyText: {
+    fontSize: 14,
   },
-  errorContainer: {
+});
+er: {
     padding: 20,
     alignItems: 'center',
   },
