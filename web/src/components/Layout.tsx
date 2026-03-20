@@ -10,6 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: '数据库', href: '/databases', icon: '🔌' },
     { name: '查询', href: '/query', icon: '📝' },
     { name: 'AI 助手', href: '/ai', icon: '🤖' },
+    { name: '模型', href: '/models', icon: '🧠' },
     { name: 'ER 图', href: '/erd', icon: '🗺️' },
     { name: '对比', href: '/compare', icon: '⚖️' },
     { name: '同步', href: '/sync', icon: '🔄' },
