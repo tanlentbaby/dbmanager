@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { dbApi } from '@/lib/api'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import ImportExport from '@/components/ImportExport'
 
 export default function Query() {
   const [sql, setSql] = useState('')
@@ -21,7 +22,6 @@ export default function Query() {
   }
 
   const handleSave = () => {
-    // 保存到书签
     console.log('保存书签:', sql)
   }
 
@@ -32,6 +32,11 @@ export default function Query() {
     } catch (error) {
       console.error('AI 优化失败:', error)
     }
+  }
+
+  const handleImportData = (data: any[]) => {
+    console.log('导入的数据:', data)
+    // 可以生成 INSERT 语句或显示预览
   }
 
   return (
@@ -67,51 +72,60 @@ export default function Query() {
 
       {/* 结果展示 */}
       {result && (
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">查询结果</h2>
-            <span className="text-sm text-gray-500">
-              {result.rowCount} 行 • {result.duration}ms
-            </span>
-          </div>
+        <>
+          <div className="card">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">查询结果</h2>
+              <span className="text-sm text-gray-500">
+                {result.rowCount} 行 • {result.duration}ms
+              </span>
+            </div>
 
-          {result.columns && result.rows && result.rows.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    {result.columns.map((col: string, i: number) => (
-                      <th
-                        key={i}
-                        className="px-4 py-3 text-left text-sm font-semibold"
-                      >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {result.rows.slice(0, 100).map((row: any[], i: number) => (
-                    <tr key={i}>
-                      {row.map((cell: any, j: number) => (
-                        <td key={j} className="px-4 py-3 text-sm">
-                          {cell !== null ? String(cell) : 'NULL'}
-                        </td>
+            {result.columns && result.rows && result.rows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      {result.columns.map((col: string, i: number) => (
+                        <th
+                          key={i}
+                          className="px-4 py-3 text-left text-sm font-semibold"
+                        >
+                          {col}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {result.rows.length > 100 && (
-                <p className="text-sm text-gray-500 mt-4">
-                  显示 100 / {result.rows.length} 行
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-gray-500">无数据</p>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {result.rows.slice(0, 100).map((row: any[], i: number) => (
+                      <tr key={i}>
+                        {row.map((cell: any, j: number) => (
+                          <td key={j} className="px-4 py-3 text-sm">
+                            {cell !== null ? String(cell) : 'NULL'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {result.rows.length > 100 && (
+                  <p className="text-sm text-gray-500 mt-4">
+                    显示 100 / {result.rows.length} 行
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-500">无数据</p>
+            )}
+          </div>
+
+          {/* 导入导出组件 */}
+          <ImportExport
+            data={result.rows}
+            columns={result.columns}
+            onImport={handleImportData}
+          />
+        </>
       )}
 
       {/* 错误提示 */}
