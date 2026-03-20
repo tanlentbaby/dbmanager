@@ -31,6 +31,7 @@
   "license": "MIT",
   "dependencies": {
     "@lark-base-open/js-sdk": "^1.0.2",
+    "@notionhq/client": "^5.14.0",
     "axios": "^1.13.6",
     "better-sqlite3": "^11.10.0",
     "chalk": "^5.4.1",

@@ -1,5 +1,5 @@
 /**
- * 命令处理器 - TypeScript 版本
+ * 命令处理器 - TypeScript 版本 v0.7.0
  */
 
 import { ConnectionManager } from '../database/connection.js';
@@ -15,6 +15,9 @@ import { IndexAdvisor } from '../utils/indexAdvisor.js';
 import { SqlAutoFixer } from '../utils/sqlAutoFixer.js';
 import { TemplateManager } from '../utils/templateManager.js';
 import { CloudSyncManager } from '../utils/cloudSync.js';
+import { LLMManager } from '../utils/llmManager.js';
+import { TeamManager } from '../utils/teamManager.js';
+import { TemplateMarketManager } from '../utils/templateMarket.js';
 
 type OutputStyle = 'output' | 'error' | 'success' | 'warning' | 'dim' | 'bold' | 'command';
 type AddOutputFn = (text: string, style?: OutputStyle) => void;
@@ -32,6 +35,9 @@ export class CommandHandler {
   private sqlAutoFixer: SqlAutoFixer;
   private templateManager: TemplateManager;
   private cloudSyncManager: CloudSyncManager;
+  private llmManager: LLMManager;
+  private teamManager: TeamManager;
+  private marketManager: TemplateMarketManager;
 
   constructor(
     configManager: ConfigManager,
@@ -50,6 +56,9 @@ export class CommandHandler {
     this.sqlAutoFixer = new SqlAutoFixer();
     this.templateManager = new TemplateManager();
     this.cloudSyncManager = new CloudSyncManager();
+    this.llmManager = new LLMManager();
+    this.teamManager = new TeamManager();
+    this.marketManager = new TemplateMarketManager();
   }
 
   /**
@@ -97,6 +106,9 @@ export class CommandHandler {
       'fix-sql': () => this.handleFixSql(args),
       template: () => this.handleTemplate(args),
       cloud: () => this.handleCloud(args),
+      ai: () => this.handleAI(args),
+      team: () => this.handleTeam(args),
+      market: () => this.handleMarket(args),
     };
 
     const handler = handlers[cmd];
@@ -1885,6 +1897,533 @@ SQL 执行:
       "redirectUri": "http://localhost:3000/callback"
     }
   }
+
+`, 'output');
+  }
+
+  /**
+   * /ai 命令 - AI 智能助手
+   */
+  private async handleAI(args: string[]): Promise<void> {
+    if (args.length === 0) {
+      this.showAIHelp();
+      return;
+    }
+
+    const subcommand = args[0].toLowerCase();
+    const params = args.slice(1);
+
+    switch (subcommand) {
+      case 'ask':
+      case 'nl2sql':
+        this.handleAIAsk(params);
+        break;
+      case 'explain':
+        this.handleAIExplain(params);
+        break;
+      case 'optimize':
+      case 'opt':
+        this.handleAIOptimize(params);
+        break;
+      case 'chat':
+        this.handleAIChat(params);
+        break;
+      case 'config':
+        this.handleAIConfig(params);
+        break;
+      default:
+        this.showAIHelp();
+    }
+  }
+
+  private async handleAIAsk(params: string[]): Promise<void> {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供自然语言查询', 'error');
+      return;
+    }
+
+    const query = params.join(' ');
+    this.addOutput('🤖 正在生成 SQL...', 'dim');
+
+    try {
+      const result = await this.llmManager.nl2sql(query);
+      
+      if (result.success && result.result) {
+        this.addOutput(`✅ 生成的 SQL:\n\n\`\`\`sql\n${result.result.sql}\n\`\`\``, 'success');
+        this.addOutput(`\n💡 说明：${result.result.explanation}`, 'output');
+        this.addOutput(`\n涉及表：${result.result.tables?.join(', ') || '未知'}`, 'dim');
+      } else {
+        this.addOutput(`❌ 生成失败：${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.addOutput(`❌ 错误：${error instanceof Error ? error.message : String(error)}`, 'error');
+    }
+  }
+
+  private async handleAIExplain(params: string[]): Promise<void> {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供 SQL 语句', 'error');
+      return;
+    }
+
+    const sql = params.join(' ');
+    this.addOutput('🤖 正在分析 SQL...', 'dim');
+
+    try {
+      const result = await this.llmManager.explainSQL(sql);
+      
+      if (result.success && result.result) {
+        this.addOutput(`📖 SQL 解释:\n\n**总结**: ${result.result.summary}`, 'output');
+        this.addOutput('\n**分解**:', 'output');
+        result.result.breakdown.forEach(step => {
+          this.addOutput(`  • ${step}`, 'dim');
+        });
+        if (result.result.suggestions.length > 0) {
+          this.addOutput('\n**优化建议**:', 'warning');
+          result.result.suggestions.forEach(s => {
+            this.addOutput(`  • ${s}`, 'dim');
+          });
+        }
+      } else {
+        this.addOutput(`❌ 解释失败：${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.addOutput(`❌ 错误：${error instanceof Error ? error.message : String(error)}`, 'error');
+    }
+  }
+
+  private async handleAIOptimize(params: string[]): Promise<void> {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供 SQL 语句', 'error');
+      return;
+    }
+
+    const sql = params.join(' ');
+    this.addOutput('🤖 正在优化 SQL...', 'dim');
+
+    try {
+      const result = await this.llmManager.optimizeSQL(sql);
+      
+      if (result.success && result.optimized) {
+        this.addOutput(`⚡ 优化后的 SQL:\n\n\`\`\`sql\n${result.optimized}\n\`\`\``, 'success');
+        if (result.suggestions && result.suggestions.length > 0) {
+          this.addOutput('\n💡 优化建议:', 'output');
+          result.suggestions.forEach(s => {
+            this.addOutput(`  • ${s}`, 'dim');
+          });
+        }
+      } else {
+        this.addOutput(`❌ 优化失败：${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.addOutput(`❌ 错误：${error instanceof Error ? error.message : String(error)}`, 'error');
+    }
+  }
+
+  private async handleAIChat(params: string[]): Promise<void> {
+    if (params.length === 0) {
+      this.addOutput('💬 AI 对话模式（输入 /exit 退出）', 'output');
+      // 简化实现：单次对话
+      this.addOutput('📝 完整对话模式将在后续版本实现', 'dim');
+      return;
+    }
+
+    const message = params.join(' ');
+    
+    try {
+      const result = await this.llmManager.chat(message);
+      
+      if (result.success && result.response) {
+        this.addOutput(`🤖 ${result.response}`, 'output');
+      } else {
+        this.addOutput(`❌ 对话失败：${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.addOutput(`❌ 错误：${error instanceof Error ? error.message : String(error)}`, 'error');
+    }
+  }
+
+  private handleAIConfig(params: string[]): void {
+    this.addOutput(`
+🔧 AI 配置
+
+当前支持以下 LLM 提供商：
+
+1. **Bailian **(通义千问)
+   - 模型：qwen-plus, qwen-max
+   - 配置：在 ~/.dbmanager/config.json 中添加:
+   {
+     "llm": {
+       "provider": "bailian",
+       "apiKey": "your-api-key"
+     }
+   }
+
+2. **Claude **(Anthropic)
+   - 模型：claude-3-sonnet-20240229, claude-3-opus-20240229
+   - 配置：
+   {
+     "llm": {
+       "provider": "claude",
+       "apiKey": "your-api-key"
+     }
+   }
+
+3. **OpenAI **(GPT)
+   - 模型：gpt-4-turbo-preview, gpt-3.5-turbo
+   - 配置：
+   {
+     "llm": {
+       "provider": "openai",
+       "apiKey": "your-api-key"
+     }
+   }
+
+配置后重启 DBManager 即可使用 AI 功能。
+`, 'output');
+  }
+
+  private showAIHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  🤖 AI 智能助手 - v0.7.0                                 ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /ai ask <自然语言>           将自然语言转换为 SQL
+  /ai explain <SQL>            解释 SQL 语句
+  /ai optimize <SQL>           优化 SQL 性能
+  /ai chat <消息>              与 AI 对话
+  /ai config                   查看 AI 配置
+
+示例：
+  /ai ask 查询最近 7 天订单最多的用户
+  /ai explain SELECT * FROM users WHERE id = 1
+  /ai optimize SELECT * FROM orders WHERE user_id = 1
+
+支持模型：
+  - 通义千问 (Bailian)
+  - Claude (Anthropic)
+  - GPT (OpenAI)
+
+`, 'output');
+  }
+
+  /**
+   * /team 命令 - 团队协作
+   */
+  private handleTeam(args: string[]): void {
+    if (args.length === 0) {
+      this.showTeamHelp();
+      return;
+    }
+
+    const subcommand = args[0].toLowerCase();
+    const params = args.slice(1);
+
+    switch (subcommand) {
+      case 'create':
+        this.handleTeamCreate(params);
+        break;
+      case 'list':
+      case 'ls':
+        this.handleTeamList();
+        break;
+      case 'invite':
+        this.handleTeamInvite(params);
+        break;
+      case 'share':
+        this.handleTeamShare(params);
+        break;
+      case 'logs':
+        this.handleTeamLogs(params);
+        break;
+      default:
+        this.showTeamHelp();
+    }
+  }
+
+  private handleTeamCreate(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供团队名称', 'error');
+      return;
+    }
+
+    const name = params[0];
+    const email = 'user@example.com'; // 简化：使用默认邮箱
+    
+    const result = this.teamManager.createTeam(name, email);
+    
+    if (result.success && result.team) {
+      this.addOutput(`✅ 团队 "${name}" 创建成功!\n\n团队 ID: ${result.team.id}\n所有者：${email}`, 'success');
+    } else {
+      this.addOutput(`❌ 创建失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleTeamList(): void {
+    const teams = this.teamManager.listTeams();
+    
+    if (teams.length === 0) {
+      this.addOutput('暂无团队', 'dim');
+      return;
+    }
+
+    let output = '📋 我的团队:\n\n';
+    teams.forEach(team => {
+      output += `• **${team.name}** (${team.members.length} 人)\n`;
+      output += `  ID: ${team.id}\n`;
+      output += `  所有者：${team.owner}\n\n`;
+    });
+
+    this.addOutput(output, 'output');
+  }
+
+  private handleTeamInvite(params: string[]): void {
+    if (params.length < 2) {
+      this.addOutput('❌ 用法：/team invite <团队 ID> <邮箱> [角色]', 'error');
+      return;
+    }
+
+    const teamId = params[0];
+    const email = params[1];
+    const role = (params[2] as any) || 'member';
+
+    const result = this.teamManager.inviteMember(teamId, email, role);
+    
+    if (result.success) {
+      this.addOutput(`✅ 已邀请 ${email} 加入团队`, 'success');
+    } else {
+      this.addOutput(`❌ 邀请失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleTeamShare(params: string[]): void {
+    if (params.length < 2) {
+      this.addOutput('❌ 用法：/team share <团队 ID> <书签 ID>', 'error');
+      return;
+    }
+
+    const teamId = params[0];
+    const bookmarkId = params[1];
+    const sharedBy = 'user@example.com';
+
+    const result = this.teamManager.shareBookmark(teamId, bookmarkId, sharedBy);
+    
+    if (result.success) {
+      this.addOutput(`✅ 书签已分享到团队`, 'success');
+    } else {
+      this.addOutput(`❌ 分享失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleTeamLogs(params: string[]): void {
+    const teamId = params[0];
+    const limit = parseInt(params[1]) || 20;
+
+    if (!teamId) {
+      this.addOutput('❌ 请提供团队 ID', 'error');
+      return;
+    }
+
+    const logs = this.teamManager.getActivityLogs(teamId, limit);
+    
+    if (logs.length === 0) {
+      this.addOutput('暂无活动日志', 'dim');
+      return;
+    }
+
+    let output = '📜 活动日志:\n\n';
+    logs.forEach(log => {
+      const time = new Date(log.timestamp).toLocaleString('zh-CN');
+      output += `${time} - ${log.action}: ${log.details}\n`;
+    });
+
+    this.addOutput(output, 'output');
+  }
+
+  private showTeamHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  👥 团队协作 - v0.7.0                                    ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /team create <名称>              创建团队
+  /team list                       查看团队列表
+  /team invite <团队 ID> <邮箱>    邀请成员
+  /team share <团队 ID> <书签 ID>  分享书签
+  /team logs <团队 ID> [数量]      查看活动日志
+
+功能：
+  - 创建和管理团队空间
+  - 邀请团队成员
+  - 共享书签库
+  - 权限管理
+  - 活动日志审计
+
+`, 'output');
+  }
+
+  /**
+   * /market 命令 - 模板市场
+   */
+  private handleMarket(args: string[]): void {
+    if (args.length === 0) {
+      this.showMarketHelp();
+      return;
+    }
+
+    const subcommand = args[0].toLowerCase();
+    const params = args.slice(1);
+
+    switch (subcommand) {
+      case 'browse':
+      case 'ls':
+        this.handleMarketBrowse(params);
+        break;
+      case 'search':
+        this.handleMarketSearch(params);
+        break;
+      case 'install':
+        this.handleMarketInstall(params);
+        break;
+      case 'publish':
+        this.handleMarketPublish(params);
+        break;
+      case 'rate':
+        this.handleMarketRate(params);
+        break;
+      case 'categories':
+      case 'cats':
+        this.handleMarketCategories();
+        break;
+      default:
+        this.showMarketHelp();
+    }
+  }
+
+  private handleMarketBrowse(params: string[]): void {
+    const category = params[0] || undefined;
+    const templates = this.marketManager.browseTemplates(category);
+
+    if (templates.length === 0) {
+      this.addOutput('暂无模板', 'dim');
+      return;
+    }
+
+    let output = '🏪 模板市场:\n\n';
+    templates.slice(0, 10).forEach(t => {
+      output += `• **${t.name}** by ${t.author}\n`;
+      output += `  ${t.description}\n`;
+      output += `  ⭐ ${t.rating} (${t.downloads} 次下载)\n\n`;
+    });
+
+    this.addOutput(output, 'output');
+  }
+
+  private handleMarketSearch(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供搜索关键词', 'error');
+      return;
+    }
+
+    const query = params.join(' ');
+    const templates = this.marketManager.searchTemplates(query);
+
+    if (templates.length === 0) {
+      this.addOutput(`未找到匹配 "${query}" 的模板`, 'dim');
+      return;
+    }
+
+    let output = `🔍 搜索 "${query}":\n\n`;
+    templates.slice(0, 10).forEach(t => {
+      output += `• **${t.name}**\n`;
+      output += `  ${t.description}\n`;
+      output += `  ⭐ ${t.rating}\n\n`;
+    });
+
+    this.addOutput(output, 'output');
+  }
+
+  private handleMarketInstall(params: string[]): void {
+    if (params.length === 0) {
+      this.addOutput('❌ 请提供模板 ID', 'error');
+      return;
+    }
+
+    const templateId = params[0];
+    const result = this.marketManager.downloadTemplate(templateId);
+
+    if (result.success && result.template) {
+      this.addOutput(`✅ 已安装模板 "${result.template.name}"\n\nSQL:\n\`\`\`sql\n${result.template.sql}\n\`\`\``, 'success');
+    } else {
+      this.addOutput(`❌ 安装失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleMarketPublish(params: string[]): void {
+    this.addOutput(`
+📤 发布模板（简化版）
+
+用法：/market publish <名称> <分类> <SQL>
+
+示例：
+/market publish "用户统计" analytics "SELECT * FROM users"
+
+完整发布功能（带描述、标签）将在后续版本实现。
+`, 'output');
+  }
+
+  private handleMarketRate(params: string[]): void {
+    if (params.length < 2) {
+      this.addOutput('❌ 用法：/market rate <模板 ID> <评分 1-5>', 'error');
+      return;
+    }
+
+    const templateId = params[0];
+    const rating = parseInt(params[1]);
+
+    const result = this.marketManager.rateTemplate(templateId, 'user', rating);
+
+    if (result.success) {
+      this.addOutput(`✅ 评分成功：${rating} ⭐`, 'success');
+    } else {
+      this.addOutput(`❌ 评分失败：${result.error}`, 'error');
+    }
+  }
+
+  private handleMarketCategories(): void {
+    const categories = this.marketManager.getCategories();
+    
+    let output = '📂 模板分类:\n\n';
+    categories.forEach(cat => {
+      output += `• **${cat.name}** - ${cat.count} 个模板\n`;
+    });
+
+    this.addOutput(output, 'output');
+  }
+
+  private showMarketHelp(): void {
+    this.addOutput(`
+╔══════════════════════════════════════════════════════════╗
+║  🏪 模板市场 - v0.7.0                                    ║
+╚══════════════════════════════════════════════════════════╝
+
+用法：
+  /market browse [分类]          浏览模板
+  /market search <关键词>        搜索模板
+  /market install <模板 ID>      安装模板
+  /market publish <名称> ...     发布模板
+  /market rate <模板 ID> <评分>  评分
+  /market categories             查看分类
+
+功能：
+  - 浏览和搜索社区模板
+  - 一键安装模板
+  - 发布自定义模板
+  - 评分和收藏
+  - 分类浏览
 
 `, 'output');
   }
