@@ -15,6 +15,7 @@ import IncrementalSync from './pages/IncrementalSync'
 import ResumableTransfer from './pages/ResumableTransfer'
 import ScheduledTasks from './pages/ScheduledTasks'
 import ParallelSync from './pages/ParallelSync'
+import AIAssistant from './pages/AIAssistant'
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="databases" element={<Databases />} />
         <Route path="query" element={<Query />} />
+        <Route path="ai" element={<AIAssistant />} />
         <Route path="erd" element={<ERD />} />
         <Route path="compare" element={<DataCompare />} />
         <Route path="sync" element={<SchemaSync />} />
