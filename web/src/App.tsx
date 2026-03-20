@@ -7,6 +7,7 @@ import Bookmarks from './pages/Bookmarks'
 import History from './pages/History'
 import Settings from './pages/Settings'
 import ERD from './pages/ERD'
+import Favorites from './pages/Favorites'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="erd" element={<ERD />} />
         <Route path="bookmarks" element={<Bookmarks />} />
         <Route path="history" element={<History />} />
+        <Route path="favorites" element={<Favorites />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
