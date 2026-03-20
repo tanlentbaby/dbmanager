@@ -12,6 +12,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: 'AI 助手', href: '/ai', icon: '🤖' },
     { name: '模型', href: '/models', icon: '🧠' },
     { name: '插件', href: '/plugins', icon: '🔌' },
+    { name: '第三方', href: '/third-party', icon: '🌐' },
     { name: 'ER 图', href: '/erd', icon: '🗺️' },
     { name: '对比', href: '/compare', icon: '⚖️' },
     { name: '同步', href: '/sync', icon: '🔄' },
