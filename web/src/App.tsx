@@ -6,6 +6,7 @@ import Query from './pages/Query'
 import Bookmarks from './pages/Bookmarks'
 import History from './pages/History'
 import Settings from './pages/Settings'
+import ERD from './pages/ERD'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="databases" element={<Databases />} />
         <Route path="query" element={<Query />} />
+        <Route path="erd" element={<ERD />} />
         <Route path="bookmarks" element={<Bookmarks />} />
         <Route path="history" element={<History />} />
         <Route path="settings" element={<Settings />} />

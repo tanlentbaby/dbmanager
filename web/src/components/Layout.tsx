@@ -9,6 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: '仪表盘', href: '/', icon: '📊' },
     { name: '数据库', href: '/databases', icon: '🔌' },
     { name: '查询', href: '/query', icon: '📝' },
+    { name: 'ER 图', href: '/erd', icon: '🗺️' },
     { name: '书签', href: '/bookmarks', icon: '🔖' },
     { name: '历史', href: '/history', icon: '📜' },
     { name: '设置', href: '/settings', icon: '⚙️' },
